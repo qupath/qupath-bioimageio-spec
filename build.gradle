@@ -43,10 +43,8 @@ java {
     toolchain {
         languageVersion = JavaLanguageVersion.of(11)
     }
-    if (project.properties['sources'])
-	    withSourcesJar()
-    if (project.properties['javadocs'])
-	    withJavadocJar()
+    withSourcesJar()
+    withJavadocJar()
 }
 
 /*
