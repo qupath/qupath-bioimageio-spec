@@ -50,7 +50,7 @@ class TestBioImageIoSpec {
 	void testParseSpec(Path path) {
 		try {
 			System.out.println("Testing " + path);
-			var model = BioImageIoSpec.parseModel(path);
+			var model = BioimageIoSpec.parseModel(path);
 			assertNotNull(model);
 		} catch (IOException e) {
 			fail(e);

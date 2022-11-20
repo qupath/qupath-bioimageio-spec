@@ -48,9 +48,9 @@ import com.google.gson.reflect.TypeToken;
  * @implNote This was written using v0.4.0 of the bioimage.io model spec, primarily for use in QuPath (but without any 
  *           QuPath-specific dependencies). It might be better generalized in the future.
  */
-public class BioImageIoSpec {
+public class BioimageIoSpec {
 	
-	private final static Logger logger = LoggerFactory.getLogger(BioImageIoSpec.class);
+	private final static Logger logger = LoggerFactory.getLogger(BioimageIoSpec.class);
 
 	/**
 	 * Parse a model from a file or directory.
