@@ -7,6 +7,7 @@ import java.lang.reflect.Type;
 import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -107,6 +108,7 @@ public class BioimageIoSpec {
 					.registerTypeAdapter(BioimageIoModel.class, new ModelDeserializer())
 					.registerTypeAdapter(BioimageIoResource.class, new ResourceDeserializer())
 					.registerTypeAdapter(BioimageIoDataset.class, new DatasetDeserializer())
+					.registerTypeAdapter(double[].class, new DoubleArrayDeserializer())
 					.registerTypeAdapter(Author.class, new Author.Deserializer())
 					.registerTypeAdapter(WeightsEntry.class, new WeightsEntry.Deserializer())
 					.registerTypeAdapter(WeightsMap.class, new WeightsMap.Deserializer())
@@ -125,6 +127,40 @@ public class BioimageIoSpec {
 			else
 				throw new IOException(e);
 		}
+	}
+	
+	
+	
+	/**
+	 * Create a shape array for a given axes.
+	 * The axes is expected to a string containing only the characters 
+	 * {@code bitczyx} as defined in the spec.
+	 * <p>
+	 * The purpose of this is to build shape arrays easily without needing to 
+	 * explicitly handle different axes and dimension ordering.
+	 * <p>
+	 * An example:
+	 * <pre>
+	 * <code>
+	 * int[] shape = getTargetShape("byxc", Map.of('x', 256, 'y', 512), 1);
+	 * </code>
+	 * </pre>
+	 * <p>
+	 * This should result in an int array with values {@code [1, 512, 256, 1]}.
+	 * 
+	 * @param axes the axes string
+	 * @param target map defining the intended length for specified dimensions
+	 * @param defaultLength the default length to use for any dimension that are not included in the target map
+	 * @return an int array with the same length as the axes string, containing the requested dimensions or default values
+	 */
+	public static int[] createShapeArray(String axes, Map<Character, Integer> target, int defaultLength) {
+		int[] array = new int[axes.length()];
+		int i = 0;
+		for (var c : axes.toLowerCase().toCharArray()) {
+			array[i] = target.getOrDefault(c, defaultLength);
+			i++;
+		}
+		return array;
 	}
 	
 	
@@ -841,6 +877,46 @@ public class BioimageIoSpec {
 	}
 
 	/**
+	 * Deal with the awkwardness of -inf and inf instead of .inf and .inf.
+	 * This otherwise caused several failures for data range.
+	 */
+	private static class DoubleArrayDeserializer implements JsonDeserializer<double[]> {
+
+		@Override
+		public double[] deserialize(JsonElement json, Type typeOfT, JsonDeserializationContext context)
+				throws JsonParseException {
+			
+			if (json.isJsonNull())
+				return null;
+			if (json.isJsonArray()) {
+				List<Double> values = new ArrayList<>();
+				for (var jsonVal : json.getAsJsonArray()) {
+					if (jsonVal.isJsonNull()) {
+						logger.warn("Found null when expecting a double - will replace with NaN");
+						values.add(Double.NaN);
+						continue;
+					}
+					var jsonPrimitive = jsonVal.getAsJsonPrimitive();
+					if (jsonPrimitive.isNumber()) {
+						values.add(jsonPrimitive.getAsDouble());
+					} else {
+						var s = jsonPrimitive.getAsString();
+						if ("inf".equals(s.toLowerCase()))
+							values.add(Double.POSITIVE_INFINITY);
+						else if ("-inf".equals(s.toLowerCase()))
+							values.add(Double.NEGATIVE_INFINITY);
+						else
+							values.add(Double.parseDouble(s));
+					}
+				}
+				return values.stream().mapToDouble(d -> d.doubleValue()).toArray();
+			} else
+				throw new JsonParseException("Cannot parse data range from " + json);
+		}
+		
+	}
+
+	/**
 	 * Model input, including shape, axes, datatype and preprocessing.
 	 */
 	public static class InputTensor extends BaseTensor {
@@ -890,12 +966,37 @@ public class BioimageIoSpec {
 		
 		protected int[] shape;
 		
+		/**
+		 * Get the shape, if this is defined explicitly.
+		 * Usually {@link #getTargetShape(int...)} is more useful.
+		 * @return
+		 */
 		public int[] getShape() {
 			return shape == null ? new int[0] : shape.clone();
 		}
 		
 		public int[] getShapeMin() {
 			return getShape();
+		}
+		
+		/**
+		 * Get a compatible shape given the specified target.
+		 * <p>
+		 * For an explicit shape (without scale/offset/step etc.) the target 
+		 * does not influence the result.
+		 * @param target
+		 * @return
+		 */
+		public int[] getTargetShape(int... target) {
+			return getShape();
+		}
+		
+		/**
+		 * Get the number of elements in the shape array.
+		 * @return
+		 */
+		public int getLength() {
+			return shape == null ? 0 : shape.length;
 		}
 		
 		public int[] getShapeStep() {
@@ -938,6 +1039,24 @@ public class BioimageIoSpec {
 			}
 			
 			@Override
+			public int[] getTargetShape(int... target) {
+				if (min == null || min.length == 0)
+					return super.getTargetShape(target);
+				if (min.length != target.length) {
+					throw new IllegalArgumentException("Target shape does not match! Should be length " + min.length + " but found length " + target.length);
+				}
+				int n = target.length;
+				int[] output = new int[n];
+				for (int i = 0; i < n; i++) {
+					if (target[i] < 0 || step == null || step[i] <= 0)
+						output[i] = min[i];
+					else
+						output[i] = min[i] + (int)Math.round((target[i] - min[i])/(double)step[i]) * step[i];
+				}
+				return output;
+			}
+			
+			@Override
 			public String toString() {
 				if (shape != null)
 					return "Input Shape (" + Arrays.toString(shape) + ")";
@@ -973,6 +1092,22 @@ public class BioimageIoSpec {
 				if (offset == null)
 					return super.getOffset();
 				return offset.clone();
+			}
+			
+			/**
+			 * Get the output shape for the given input.
+			 * This uses either the explicit shape, or scale and offset.
+			 */
+			@Override
+			public int[] getTargetShape(int... target) {
+				if (offset == null || offset.length == 0 || scale == null || scale.length == 0)
+					return super.getTargetShape(target);
+				int n = target.length;
+				int[] output = new int[n];
+				for (int i = 0; i < n; i++) {
+					output[i] = (int)Math.round(target[i] * scale[i] + offset[i] * 2);
+				}
+				return output;
 			}
 			
 			@Override
