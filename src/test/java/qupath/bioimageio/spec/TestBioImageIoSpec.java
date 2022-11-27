@@ -6,21 +6,25 @@ import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Collection;
 import java.util.Collections;
-import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Test parsing the spec.
  */
 class TestBioImageIoSpec {
 	
-	static List<Path> provideYamlPaths() throws IOException, URISyntaxException {
+	private static final Logger logger = LoggerFactory.getLogger(TestBioImageIoSpec.class);
+	
+	static Collection<Path> provideYamlPaths() throws IOException, URISyntaxException {
 		
 		Path path;
 		var testPath = System.getProperty("models", null);
@@ -29,25 +33,34 @@ class TestBioImageIoSpec {
 		} else {
 			path = Paths.get(TestBioImageIoSpec.class.getResource("/specs").toURI());			
 		}
-		if (isModelYaml(path))
+		int testDepth = Integer.parseInt(System.getProperty("depth", "5"));
+		
+		if (containsModel(path))
 			return Collections.singletonList(path);
 		else if (Files.isDirectory(path)) {
-			return Files.walk(path, 5)
-			.filter(TestBioImageIoSpec::isModelYaml)
-			.collect(Collectors.toList());
+			return Files.walk(path, testDepth)
+			.filter(TestBioImageIoSpec::containsModel)
+			.collect(Collectors.toSet());
 		} else {
-			System.err.println("No yaml files found to test!");
+			logger.error("No yaml files found to test!");
 			return Collections.emptyList();
 		}
 	}
 	
 	
-	private static boolean isModelYaml(Path path) {
-		if (!Files.isRegularFile(path))
-			return false;
-		var name = path.getFileName().toString().toLowerCase();
-		if (name.endsWith(".yaml") || name.endsWith(".yml"))
-			return name.startsWith("rdf") || name.startsWith("model");
+	private static boolean containsModel(Path path) {
+		try {
+			if (BioimageIoSpec.findModelRdf(path) != null)
+				return true;
+			// Accept also yaml files starting with model or rdf
+			// (but ignore things like environment.yml)
+			if (BioimageIoSpec.isYamlPath(path)) {
+				var name = path.getFileName().toString().toLowerCase();
+				return name.startsWith("model") || name.startsWith("rdf");
+			}
+		} catch (IOException e) {
+			logger.error(e.getLocalizedMessage(), e);
+		}
 		return false;
 	}
 
@@ -59,9 +72,11 @@ class TestBioImageIoSpec {
 	@MethodSource("provideYamlPaths")
 	void testParseSpec(Path path) {
 		try {
-			System.out.println("Testing " + path);
+			logger.info("Attempting to parse {}", path);
 			var model = BioimageIoSpec.parseModel(path);
 			assertNotNull(model);
+			if (Files.isDirectory(path))
+				assertEquals(path.toUri(), model.getBaseURI());
 		} catch (IOException e) {
 			fail(e);
 		}
