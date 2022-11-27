@@ -5,10 +5,12 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.lang.reflect.Type;
 import java.net.URI;
+import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -75,13 +77,15 @@ public class BioimageIoSpec {
 		
 		var pathYaml = findModelRdf(path);
 		if (pathYaml == null) {
-			throw new IOException("Cannot find rdf.yaml from " + path);
+			throw new IOException("Can't find rdf.yaml from " + path);
 		}
 		
 		try (var stream = Files.newInputStream(pathYaml)) {
 			var model = parseModel(stream);
-			if (model != null)
+			if (model != null) {
 				model.baseURI = pathYaml.getParent().toUri();
+				model.uri = pathYaml.toUri();
+			}
 			return model;
 		}
 	}
@@ -163,28 +167,59 @@ public class BioimageIoSpec {
 		return array;
 	}
 	
+	/**
+	 * List of file names that may contain the model.
+	 * Names should be checked in order, with preference given to the first that is found.
+	 */
+	static final List<String> MODEL_NAMES = Collections.unmodifiableList(Arrays.asList("model.yaml", "model.yml", "rdf.yaml", "rdf.yml"));
 	
+	static Path findModelRdf(Path path) throws IOException {
+		return findRdf(path, MODEL_NAMES);
+	}
 	
-	private static Path findModelRdf(Path path) throws IOException {
+	private static Path findRdf(Path path, Collection<String> names) throws IOException {
+		if (isYamlPath(path)) {
+			if (names.isEmpty())
+				return path;
+			else {
+				var name = path.getFileName().toString().toLowerCase();
+				if (names.contains(name) || name.startsWith("model") || name.startsWith("rdf"))
+					return path;
+				return null;
+			}
+		}
+		
+		
 		if (Files.isDirectory(path)) {
-			var yamlFiles = Files.list(path).filter(p -> isYamlPath(p)).collect(Collectors.toList());
+			// Check directory
+			List<Path> yamlFiles = Files.list(path).filter(p -> isYamlPath(p)).collect(Collectors.toList());
 			if (yamlFiles.isEmpty())
 				return null;
 			if (yamlFiles.size() == 1)
 				return yamlFiles.get(0);
-			var modelFile = yamlFiles.stream().filter(p -> p.getFileName().startsWith("model.yaml")).findFirst().orElse(null);
-			if (modelFile != null)
-				return modelFile;
-			var rdfFile = yamlFiles.stream().filter(p -> p.getFileName().startsWith("rdf.yaml")).findFirst().orElse(null);
-			if (rdfFile != null)
-				return rdfFile;
-			return null;
-		} else if (isYamlPath(path))
-			return path;
+			for (var name : MODEL_NAMES) {
+				var modelFile = yamlFiles.stream()
+						.filter(p -> p.getFileName().toString().equalsIgnoreCase(name))
+						.findFirst()
+						.orElse(null);
+				if (modelFile != null)
+					return modelFile;
+			}
+		} else if (path.toAbsolutePath().toString().toLowerCase().endsWith(".zip")) {
+			// Check zip file
+			var fs = FileSystems.newFileSystem(path, (ClassLoader)null);
+			for (var dir : fs.getRootDirectories()) {
+				for (var name : MODEL_NAMES) {
+					var p = dir.resolve(name);
+					if (Files.exists(p))
+						return p;
+				}
+			}
+		}
 		return null;
 	}
 	
-	private static boolean isYamlPath(Path path) {
+	static boolean isYamlPath(Path path) {
 		if (Files.isRegularFile(path)) {
 			var name = path.getFileName().toString().toLowerCase();
 			return name.endsWith(".yaml") || name.endsWith(".yml");
@@ -200,7 +235,7 @@ public class BioimageIoSpec {
 				return null;
 			var obj = json.getAsJsonObject();
 			BioimageIoResource resource = new BioimageIoResource();
-			deserializeResourceFields(resource, obj, context);
+			deserializeResourceFields(resource, obj, context, true);
 			return resource;
 		}
 		
@@ -214,77 +249,78 @@ public class BioimageIoSpec {
 				return null;
 			var obj = json.getAsJsonObject();
 			BioimageIoDataset dataset = new BioimageIoDataset();
-			deserializeResourceFields(dataset, obj, context);
+			// Deserialize, but not strictly... i.e. allow nulls because we might just have an ID
+			deserializeResourceFields(dataset, obj, context, false);
 			return dataset;
 		}
 		
 	}
 	
 	
-	private static void deserializeResourceFields(BioimageIoResource resource, JsonObject obj, JsonDeserializationContext context) {
+	private static void deserializeResourceFields(BioimageIoResource resource, JsonObject obj, JsonDeserializationContext context, boolean doStrict) {
 		
-		resource.formatVersion = deserializeField(context, obj, "format_version", String.class);
-		resource.authors = deserializeField(context, obj, "authors", parameterizedListType(Author.class));
-		resource.description = deserializeField(context, obj, "description", String.class);
-		resource.documentation = deserializeField(context, obj, "documentation", String.class);
+		resource.formatVersion = deserializeField(context, obj, "format_version", String.class, doStrict);
+		resource.authors = deserializeField(context, obj, "authors", parameterizedListType(Author.class), doStrict);
+		resource.description = deserializeField(context, obj, "description", String.class, doStrict);
+		resource.documentation = deserializeField(context, obj, "documentation", String.class, doStrict);
 		
-		resource.license = deserializeField(context, obj, "license", String.class);
-		resource.name = deserializeField(context, obj, "name", String.class);
+		resource.license = deserializeField(context, obj, "license", String.class, doStrict);
+		resource.name = deserializeField(context, obj, "name", String.class, doStrict);
 		
 		if (obj.has("attachments")) {
 			if (obj.get("attachments").isJsonObject())
-				resource.attachments = deserializeField(context, obj, "attachments", Map.class);
+				resource.attachments = deserializeField(context, obj, "attachments", Map.class, Collections.emptyMap());
 			else
-				logger.warn("Cannot parse attachments (not a dict)");
+				logger.warn("Can't parse attachments (not a dict)");
 		}
-		resource.badges = deserializeField(context, obj, "badges", parameterizedListType(Badge.class));
-		resource.cite = deserializeField(context, obj, "cite", parameterizedListType(CiteEntry.class));
+		resource.badges = deserializeField(context, obj, "badges", parameterizedListType(Badge.class), Collections.emptyList());
+		resource.cite = deserializeField(context, obj, "cite", parameterizedListType(CiteEntry.class), Collections.emptyList());
 
-		resource.covers = deserializeField(context, obj, "covers", parameterizedListType(String.class));
-		resource.downloadURL = deserializeField(context, obj, "download_url", String.class);
-		resource.gitRepo = deserializeField(context, obj, "git_repo", String.class);			
-		resource.icon = deserializeField(context, obj, "icon", String.class);
-		resource.id = deserializeField(context, obj, "id", String.class);
-		resource.links = deserializeField(context, obj, "links", parameterizedListType(String.class));
-		resource.maintainers = deserializeField(context, obj, "maintainers", parameterizedListType(Author.class));
+		resource.covers = deserializeField(context, obj, "covers", parameterizedListType(String.class), Collections.emptyList());
+		resource.downloadURL = deserializeField(context, obj, "download_url", String.class, null);
+		resource.gitRepo = deserializeField(context, obj, "git_repo", String.class, null);			
+		resource.icon = deserializeField(context, obj, "icon", String.class, null);
+		resource.id = deserializeField(context, obj, "id", String.class, null);
+		resource.links = deserializeField(context, obj, "links", parameterizedListType(String.class), Collections.emptyList());
+		resource.maintainers = deserializeField(context, obj, "maintainers", parameterizedListType(Author.class), Collections.emptyList());
 
-		resource.rdfSource = deserializeField(context, obj, "rdf_source", String.class);
+		resource.rdfSource = deserializeField(context, obj, "rdf_source", String.class, null);
 
-		resource.tags = deserializeField(context, obj, "tags", parameterizedListType(String.class));
+		resource.tags = deserializeField(context, obj, "tags", parameterizedListType(String.class), Collections.emptyList());
 
-		resource.trainingData = deserializeField(context, obj, "training_data", BioimageIoDataset.class);
+		resource.trainingData = deserializeField(context, obj, "training_data", BioimageIoDataset.class, null);
 
-		resource.version = deserializeField(context, obj, "version", String.class);
+		resource.version = deserializeField(context, obj, "version", String.class, null);
 
 	}
 	
-	private static void deserializeModelFields(BioimageIoModel model, JsonObject obj, JsonDeserializationContext context) {
-		model.inputs = deserializeField(context, obj, "inputs", parameterizedListType(InputTensor.class));
+	private static void deserializeModelFields(BioimageIoModel model, JsonObject obj, JsonDeserializationContext context, boolean doStrict) {
+		model.inputs = deserializeField(context, obj, "inputs", parameterizedListType(InputTensor.class), doStrict);
 		
-		model.testInputs = deserializeField(context, obj, "test_inputs", parameterizedListType(String.class));
-		model.testOutputs = deserializeField(context, obj, "test_outputs", parameterizedListType(String.class));
+		model.testInputs = deserializeField(context, obj, "test_inputs", parameterizedListType(String.class), doStrict);
+		model.testOutputs = deserializeField(context, obj, "test_outputs", parameterizedListType(String.class), doStrict);
 
-		model.timestamp = deserializeField(context, obj, "timestamp", String.class);
+		model.timestamp = deserializeField(context, obj, "timestamp", String.class, doStrict);
 		
-		model.weights = deserializeField(context, obj, "weights", WeightsMap.class);
+		model.weights = deserializeField(context, obj, "weights", WeightsMap.class, doStrict);
 
-		model.config = deserializeField(context, obj, "config", Map.class);
+		model.config = deserializeField(context, obj, "config", Map.class, Collections.emptyMap());
 
-		model.outputs = deserializeField(context, obj, "outputs", parameterizedListType(OutputTensor.class));
+		model.outputs = deserializeField(context, obj, "outputs", parameterizedListType(OutputTensor.class), Collections.emptyList());
 
-		model.packagedBy = deserializeField(context, obj, "packaged_by", parameterizedListType(Author.class));
+		model.packagedBy = deserializeField(context, obj, "packaged_by", parameterizedListType(Author.class), Collections.emptyList());
 
-		model.parent = deserializeField(context, obj, "parent", ModelParent.class);
+		model.parent = deserializeField(context, obj, "parent", ModelParent.class, null);
 
 		if (obj.has("run_mode")) {
 			if (obj.get("run_mode").isJsonObject())
-				model.runMode = deserializeField(context, obj, "run_mode", Map.class);
+				model.runMode = deserializeField(context, obj, "run_mode", Map.class, Collections.emptyMap());
 			else
-				logger.warn("Cannot parse run_mode (not an object)");
+				logger.warn("Can't parse run_mode (not an object)");
 		}
 
-		model.sampleInputs = deserializeField(context, obj, "sample_inputs", parameterizedListType(String.class));
-		model.sampleOutputs = deserializeField(context, obj, "sample_outputs", parameterizedListType(String.class));
+		model.sampleInputs = deserializeField(context, obj, "sample_inputs", parameterizedListType(String.class), Collections.emptyList());
+		model.sampleOutputs = deserializeField(context, obj, "sample_outputs", parameterizedListType(String.class), Collections.emptyList());
 	}
 	
 	private static Type parameterizedListType(Type typeOfList) {
@@ -306,8 +342,8 @@ public class BioimageIoSpec {
 			
 			var obj = json.getAsJsonObject();
 			
-			deserializeResourceFields(model, obj, context);
-			deserializeModelFields(model, obj, context);
+			deserializeResourceFields(model, obj, context, true);
+			deserializeModelFields(model, obj, context, true);
 
 			return model;
 		}
@@ -341,12 +377,23 @@ public class BioimageIoSpec {
 	}
 	
 	
-	
-
-	private static <T> T deserializeField(JsonDeserializationContext context, JsonObject obj, String name, Type typeOfT) {
+	/**
+	 * Deserialize a field.
+	 * @param <T>
+	 * @param context
+	 * @param obj
+	 * @param name
+	 * @param typeOfT
+	 * @param doStrict if true, fail if the field is missing; otherwise, return null
+	 * @return
+	 * @throws IllegalArgumentException if doStrict is true and the field is not found
+	 */
+	private static <T> T deserializeField(JsonDeserializationContext context, JsonObject obj, String name, Type typeOfT, boolean doStrict) throws IllegalArgumentException {
+		if (doStrict && !obj.has(name))
+			throw new IllegalArgumentException("Required field " + name + " not found");
 		return deserializeField(context, obj, name, typeOfT, null);
 	}
-	
+
 	private static <T> T deserializeField(JsonDeserializationContext context, JsonObject obj, String name, Type typeOfT, T defaultValue) {
 		if (obj.has(name)) {
 			return ensureUnmodifiable(context.deserialize(obj.get(name), typeOfT));
@@ -590,6 +637,7 @@ public class BioimageIoSpec {
 	public static class BioimageIoModel extends BioimageIoResource {
 		
 		private URI baseURI;
+		private URI uri;
 				
 		private List<InputTensor> inputs;
 				
@@ -624,11 +672,27 @@ public class BioimageIoSpec {
 		
 		/**
 		 * Get the base URI, providing the location of the model.
-		 * This is typically a URI representing the downloaded model directory.
+		 * This is typically a URI representing the downloaded model directory 
+		 * (the parent of {@link #getURI()}).
+		 * This may also represent a zipped file, if the model is read without unzipping 
+		 * the contents.
 		 * @return
 		 */
 		public URI getBaseURI() {
-			return baseURI;
+			if (baseURI != null)
+				return baseURI;
+			if (uri != null)
+				return uri.resolve("..");
+			return null;
+		}
+		
+		/**
+		 * Get the URI providing the location of the model.
+		 * This is typically a URI representing the yaml file for the model.
+		 * @return
+		 */
+		public URI getURI() {
+			return uri;
 		}
 		
 		/**
@@ -759,10 +823,10 @@ public class BioimageIoSpec {
 				var author = new Author();
 				if (json.isJsonObject()) {
 					var obj = json.getAsJsonObject();
-					author.name = deserializeField(context, obj, "name", String.class);
-					author.affiliation = deserializeField(context, obj, "affiliation", String.class);
-					author.githubUser = deserializeField(context, obj, "github_user", String.class);
-					author.orcid = deserializeField(context, obj, "orcid", String.class);
+					author.name = deserializeField(context, obj, "name", String.class, null);
+					author.affiliation = deserializeField(context, obj, "affiliation", String.class, null);
+					author.githubUser = deserializeField(context, obj, "github_user", String.class, null);
+					author.orcid = deserializeField(context, obj, "orcid", String.class, null);
 				} else if (json.isJsonPrimitive()) {
 					author.name = json.getAsString();
 				}
@@ -911,7 +975,7 @@ public class BioimageIoSpec {
 				}
 				return values.stream().mapToDouble(d -> d.doubleValue()).toArray();
 			} else
-				throw new JsonParseException("Cannot parse data range from " + json);
+				throw new JsonParseException("Can't parse data range from " + json);
 		}
 		
 	}
@@ -1371,7 +1435,7 @@ public class BioimageIoSpec {
 				switch (name) {
 				case "binarize":
 					var binarize = new Processing.Binarize();
-					binarize.threshold = deserializeField(context, kwargs, "threshold", Double.class);
+					binarize.threshold = deserializeField(context, kwargs, "threshold", Double.class, true);
 					return binarize;
 				case "clip":
 					var clip = new Processing.Clip();
@@ -1380,23 +1444,23 @@ public class BioimageIoSpec {
 					return clip;
 				case "scale_linear":
 					var scaleLinear = new Processing.ScaleLinear();
-					scaleLinear.axes = deserializeField(context, kwargs, "axes", String.class);
-					scaleLinear.gain = deserializeField(context, kwargs, "gain", double[].class);
-					scaleLinear.offset = deserializeField(context, kwargs, "offset", double[].class);
+					scaleLinear.axes = deserializeField(context, kwargs, "axes", String.class, false);
+					scaleLinear.gain = deserializeField(context, kwargs, "gain", double[].class, false);
+					scaleLinear.offset = deserializeField(context, kwargs, "offset", double[].class, false);
 					return scaleLinear;
 				case "scale_mean_variance":
 					var scaleMeanVariance = new Processing.ScaleMeanVariance();
-					((ProcessingWithMode)scaleMeanVariance).mode = deserializeField(context, kwargs, "mode", Processing.ProcessingMode.class);
-					((ProcessingWithMode)scaleMeanVariance).axes = deserializeField(context, kwargs, "axes", String.class);
+					((ProcessingWithMode)scaleMeanVariance).mode = deserializeField(context, kwargs, "mode", Processing.ProcessingMode.class, false);
+					((ProcessingWithMode)scaleMeanVariance).axes = deserializeField(context, kwargs, "axes", String.class, false);
 					((ProcessingWithMode)scaleMeanVariance).eps = deserializeField(context, kwargs, "eps", Double.class, 1e-6);
-					scaleMeanVariance.referenceTensor = deserializeField(context, kwargs, "reference_tensor", String.class);
+					scaleMeanVariance.referenceTensor = deserializeField(context, kwargs, "reference_tensor", String.class, null);
 					return scaleMeanVariance;
 				case "scale_range":
 					var scaleRange = new Processing.ScaleRange();
-					((ProcessingWithMode)scaleRange).mode = deserializeField(context, kwargs, "mode", Processing.ProcessingMode.class);
-					((ProcessingWithMode)scaleRange).axes = deserializeField(context, kwargs, "axes", String.class);
+					((ProcessingWithMode)scaleRange).mode = deserializeField(context, kwargs, "mode", Processing.ProcessingMode.class, false);
+					((ProcessingWithMode)scaleRange).axes = deserializeField(context, kwargs, "axes", String.class, false);
 					((ProcessingWithMode)scaleRange).eps = deserializeField(context, kwargs, "eps", Double.class, 1e-6);
-					scaleRange.referenceTensor = deserializeField(context, obj, "reference_tensor", String.class);
+					scaleRange.referenceTensor = deserializeField(context, obj, "reference_tensor", String.class, null);
 					scaleRange.maxPercentile = deserializeField(context, kwargs, "max_percentile", Double.class, 0.0);
 					scaleRange.minPercentile = deserializeField(context, kwargs, "min_percentile", Double.class, 100.0);
 					return scaleRange;
@@ -1404,11 +1468,11 @@ public class BioimageIoSpec {
 					return new Sigmoid();
 				case "zero_mean_unit_variance":
 					var zeroMeanUnitVariance = new Processing.ZeroMeanUnitVariance();
-					((ProcessingWithMode)zeroMeanUnitVariance).mode = deserializeField(context, kwargs, "mode", Processing.ProcessingMode.class);
-					((ProcessingWithMode)zeroMeanUnitVariance).axes = deserializeField(context, kwargs, "axes", String.class);
+					((ProcessingWithMode)zeroMeanUnitVariance).mode = deserializeField(context, kwargs, "mode", Processing.ProcessingMode.class, false);
+					((ProcessingWithMode)zeroMeanUnitVariance).axes = deserializeField(context, kwargs, "axes", String.class, false);
 					((ProcessingWithMode)zeroMeanUnitVariance).eps = deserializeField(context, kwargs, "eps", Double.class, 1e-6);
-					zeroMeanUnitVariance.mean = deserializeField(context, kwargs, "mean", double[].class);
-					zeroMeanUnitVariance.std = deserializeField(context, kwargs, "std", double[].class);
+					zeroMeanUnitVariance.mean = deserializeField(context, kwargs, "mean", double[].class, false);
+					zeroMeanUnitVariance.std = deserializeField(context, kwargs, "std", double[].class, false);
 					return zeroMeanUnitVariance;
 				default:
 					var processing = new Processing(name);
