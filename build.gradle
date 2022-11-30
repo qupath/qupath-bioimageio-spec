@@ -23,7 +23,7 @@ version = "0.1.0-SNAPSHOT"
 
 dependencies {
     // These are included in QuPath distribution
-    implementation "org.slf4j:slf4j-api:2.0.0"
+    implementation "org.slf4j:slf4j-api:2.0.4"
     implementation 'org.yaml:snakeyaml:1.33'
     implementation 'com.google.code.gson:gson:2.10'
 
