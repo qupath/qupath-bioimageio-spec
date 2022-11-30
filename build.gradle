@@ -19,7 +19,7 @@ repositories {
 
 description = 'Support for parsing the BioImage Model Zoo spec in Java'
 
-version = "0.1.0-SNAPSHOT"
+version = "0.1.0"
 
 dependencies {
     // These are included in QuPath distribution
@@ -71,11 +71,12 @@ jar {
  * Create javadocs for all modules/packages in one place.
  * Use -PstrictJavadoc=true to fail on error with doclint (which is rather strict).
  */
-def strictJavadoc = findProperty('strictJavadoc')
-if (!strictJavadoc) {
-    tasks.withType(Javadoc) {
+tasks.withType(Javadoc) {
+	options.encoding = 'UTF-8'
+	def strictJavadoc = findProperty('strictJavadoc')
+	if (!strictJavadoc) {
         options.addStringOption('Xdoclint:none', '-quiet')
-    }
+	}
 }
 
 /*
