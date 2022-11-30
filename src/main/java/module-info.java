@@ -1,4 +1,4 @@
-module qupath.bioimageio.spec {
+module io.github.qupath.bioimageio.spec {
 	
 	requires org.yaml.snakeyaml;
 	requires com.google.gson;
