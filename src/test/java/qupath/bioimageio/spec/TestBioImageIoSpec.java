@@ -39,7 +39,7 @@ class TestBioImageIoSpec {
 			return Collections.singletonList(path);
 		else if (Files.isDirectory(path)) {
 			return Files.walk(path, testDepth)
-			.filter(TestBioImageIoSpec::containsModel)
+			.filter(p -> containsModel(p) || p.toString().endsWith(".zip"))
 			.collect(Collectors.toSet());
 		} else {
 			logger.error("No yaml files found to test!");
