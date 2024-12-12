@@ -3,6 +3,7 @@ package qupath.bioimageio.spec;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.module.ModuleDescriptor;
 import java.lang.reflect.Type;
 import java.net.URI;
 import java.nio.file.FileSystems;
@@ -104,9 +105,9 @@ public class BioimageIoSpec {
 			// Important to use SafeConstructor to restrict potential classes that might be initiated
 			// Note: we can't support -inf or inf (but can support -.inf or .inf)
 			Yaml yaml = new Yaml(new SafeConstructor(new LoaderOptions()));
-			Map<String, ?> map = yaml.load(stream);	
-			
-			var gson = new GsonBuilder()
+			Map<String, ?> map = yaml.load(stream);
+
+			var builder = new GsonBuilder()
 					.serializeSpecialFloatingPointValues()
 					.setPrettyPrinting()
 					.registerTypeAdapter(BioimageIoModel.class, new ModelDeserializer())
@@ -119,9 +120,11 @@ public class BioimageIoSpec {
 					.registerTypeAdapter(Shape.class, new ShapeDeserializer())
 					.registerTypeAdapter(Processing.class, new Processing.Deserializer())
 					.registerTypeAdapter(Processing.ProcessingMode.class, new Processing.ModeDeserializer())
-					.setDateFormat("yyyy-MM-dd'T'HH:mm:ss")
-					.create();
-			
+					.setDateFormat("yyyy-MM-dd'T'HH:mm:ss");
+
+
+			var gson = builder.create();
+
 			var json = gson.toJson(map);
 			
 			return gson.fromJson(json, BioimageIoModel.class);
@@ -132,9 +135,87 @@ public class BioimageIoSpec {
 				throw new IOException(e);
 		}
 	}
-	
-	
-	
+
+	/**
+	 * Parse a model from a path.
+	 * This can either represent a yaml file, or a directory that contains a yaml file representing the model.
+	 *
+	 * @param path
+	 * @return
+	 * @throws IOException if the model cannot be found or parsed
+	 */
+	public static BioImageIoSpec05.BioimageIoModel05 parseModel05(Path path) throws IOException {
+
+		var pathYaml = findModelRdf(path);
+		if (pathYaml == null) {
+			throw new IOException("Can't find rdf.yaml from " + path);
+		}
+
+		try (var stream = Files.newInputStream(pathYaml)) {
+			var model = parseModel05(stream);
+			if (model != null) {
+				model.baseURI = pathYaml.getParent().toUri();
+				model.uri = pathYaml.toUri();
+			}
+			return model;
+		}
+	}
+
+	/**
+	 * Parse a model from an input stream.
+	 * Note that {@link BioimageIoModel#getBaseURI()} will return null in this case, because the base URI
+	 * is unknown.
+	 * @param stream
+	 * @return
+	 * @throws IOException if the model cannot be found or parsed
+	 */
+	public static BioImageIoSpec05.BioimageIoModel05 parseModel05(InputStream stream) throws IOException {
+
+		try {
+			// Important to use SafeConstructor to restrict potential classes that might be initiated
+			// Note: we can't support -inf or inf (but can support -.inf or .inf)
+			Yaml yaml = new Yaml(new SafeConstructor(new LoaderOptions()));
+			Map<String, ?> map = yaml.load(stream);
+			System.out.println(map.get("format_version"));
+
+			var builder = new GsonBuilder()
+					.serializeSpecialFloatingPointValues()
+					.setPrettyPrinting()
+					// .registerTypeAdapter(BioimageIoModel.class, new ModelDeserializer())
+					.registerTypeAdapter(BioimageIoResource.class, new ResourceDeserializer())
+					.registerTypeAdapter(BioimageIoDataset.class, new DatasetDeserializer())
+					.registerTypeAdapter(double[].class, new DoubleArrayDeserializer())
+					.registerTypeAdapter(Author.class, new Author.Deserializer())
+					.registerTypeAdapter(WeightsEntry.class, new WeightsEntry.Deserializer())
+					.registerTypeAdapter(WeightsMap.class, new WeightsMap.Deserializer())
+					.registerTypeAdapter(Shape.class, new ShapeDeserializer())
+					.registerTypeAdapter(Processing.ProcessingMode.class, new Processing.ModeDeserializer())
+					.setDateFormat("yyyy-MM-dd'T'HH:mm:ss");
+
+
+			ModuleDescriptor.Version version = ModuleDescriptor.Version.parse((String)map.get("format_version"));
+			if (version.compareTo(ModuleDescriptor.Version.parse("0.5.0")) >= 1) {
+				System.out.println("Trying new parsing");
+				builder.registerTypeAdapter(BioImageIoSpec05.BioimageIoModel05.class, new BioImageIoSpec05.ModelDeserializer05())
+						.registerTypeAdapter(Processing.class, new Processing.Deserializer05());
+			} else {
+				builder.registerTypeAdapter(BioimageIoModel.class, new ModelDeserializer());
+			}
+
+			var gson = builder.create();
+
+			var json = gson.toJson(map);
+
+			return gson.fromJson(json, BioImageIoSpec05.BioimageIoModel05.class);
+		} catch (Exception e) {
+			if (e instanceof IOException)
+				throw e;
+			else
+				throw new IOException(e);
+		}
+	}
+
+
 	/**
 	 * Create a shape array for a given axes.
 	 * The axes is expected to a string containing only the characters 
@@ -257,7 +338,7 @@ public class BioimageIoSpec {
 	}
 	
 	
-	private static void deserializeResourceFields(BioimageIoResource resource, JsonObject obj, JsonDeserializationContext context, boolean doStrict) {
+	static void deserializeResourceFields(BioimageIoResource resource, JsonObject obj, JsonDeserializationContext context, boolean doStrict) {
 		
 		resource.formatVersion = deserializeField(context, obj, "format_version", String.class, doStrict);
 		resource.authors = deserializeField(context, obj, "authors", parameterizedListType(Author.class), doStrict);
@@ -323,7 +404,7 @@ public class BioimageIoSpec {
 		model.sampleOutputs = deserializeField(context, obj, "sample_outputs", parameterizedListType(String.class), Collections.emptyList());
 	}
 	
-	private static Type parameterizedListType(Type typeOfList) {
+	static Type parameterizedListType(Type typeOfList) {
 		return TypeToken.getParameterized(List.class, typeOfList).getType();
 	}
 
@@ -347,7 +428,6 @@ public class BioimageIoSpec {
 
 			return model;
 		}
-						
 	}
 	
 	private static class ShapeDeserializer implements JsonDeserializer<Shape> {
@@ -388,13 +468,13 @@ public class BioimageIoSpec {
 	 * @return
 	 * @throws IllegalArgumentException if doStrict is true and the field is not found
 	 */
-	private static <T> T deserializeField(JsonDeserializationContext context, JsonObject obj, String name, Type typeOfT, boolean doStrict) throws IllegalArgumentException {
+	static <T> T deserializeField(JsonDeserializationContext context, JsonObject obj, String name, Type typeOfT, boolean doStrict) throws IllegalArgumentException {
 		if (doStrict && !obj.has(name))
 			throw new IllegalArgumentException("Required field " + name + " not found");
 		return deserializeField(context, obj, name, typeOfT, null);
 	}
 
-	private static <T> T deserializeField(JsonDeserializationContext context, JsonObject obj, String name, Type typeOfT, T defaultValue) {
+	static <T> T deserializeField(JsonDeserializationContext context, JsonObject obj, String name, Type typeOfT, T defaultValue) {
 		if (obj.has(name)) {
 			return ensureUnmodifiable(context.deserialize(obj.get(name), typeOfT));
 		}
@@ -571,7 +651,7 @@ public class BioimageIoSpec {
 			return key;
 		}
 		
-		private static WeightsEntry fromKey(String name) {
+		static WeightsEntry fromKey(String name) {
 			for (var v : values()) {
 				if (v.key.equals(name) || v.alternatives.contains(name))
 					return v;
@@ -592,7 +672,7 @@ public class BioimageIoSpec {
 		
 	}
 	
-	private static class WeightsMap {
+	static class WeightsMap {
 		
 		private Map<WeightsEntry, ModelWeights> map;
 		
@@ -600,7 +680,11 @@ public class BioimageIoSpec {
 			return map == null ? Collections.emptyMap() : map.entrySet().stream()
 					.collect(Collectors.toMap(e -> e.getKey().toString(), e -> e.getValue()));
 		}
-		
+
+		public Map<WeightsEntry, ModelWeights> getMap() {
+			return map;
+		}
+
 		private static class Deserializer implements JsonDeserializer<WeightsMap> {
 
 			@Override
@@ -760,16 +844,17 @@ public class BioimageIoSpec {
 		}
 		
 	}
-	
-	
-	/**
+
+
+
+    /**
 	 * Ensure the input is an unmodifiable list, or empty list if null.
 	 * Note that OpenJDK implementation is expected to return its input if already unmodifiable.
 	 * @param <T>
 	 * @param list
 	 * @return
 	 */
-	private static <T> List<T> toUnmodifiableList(List<T> list) {
+	static <T> List<T> toUnmodifiableList(List<T> list) {
 		return list == null || list.isEmpty() ? Collections.emptyList() : Collections.unmodifiableList(list);
 	}
 	
@@ -912,32 +997,32 @@ public class BioimageIoSpec {
 		@SerializedName("data_type")
 		private String dataType;
 		private String name;
-		
+
 		private Shape shape;
-		
+
 		@SerializedName("data_range")
 		private double[] dataRange;
 
 		public String getAxes() {
 			return axes;
 		}
-		
+
 		public String getDataType() {
 			return dataType;
 		}
-		
+
 		public String getName() {
 			return name;
 		}
-		
+
 		public Shape getShape() {
 			return shape;
 		}
-		
+
 		public double[] getDataRange() {
 			return dataRange == null ? null : dataRange.clone();
 		}
-		
+
 	}
 
 	/**
@@ -984,20 +1069,20 @@ public class BioimageIoSpec {
 	 * Model input, including shape, axes, datatype and preprocessing.
 	 */
 	public static class InputTensor extends BaseTensor {
-		
+
 		private List<Processing> preprocessing;
-		
+
 		public List<Processing> getPreprocessing() {
 			return toUnmodifiableList(preprocessing);
 		}
-		
+
 		@Override
 		public String toString() {
 			return "Input tensor [" + getShape() + ", processing steps=" + getPreprocessing().size() + "]";
 		}
-		
+
 	}
-	
+
 	/**
 	 * Model output, including shape, axes, halo, datatype and postprocessing.
 	 */
@@ -1273,7 +1358,7 @@ public class BioimageIoSpec {
 				super("binarize");
 			}
 
-			private double threshold = Double.NaN;
+			double threshold = Double.NaN;
 
 			public double getThreshold() {
 				return threshold;
@@ -1283,8 +1368,8 @@ public class BioimageIoSpec {
 
 		public static class Clip extends Processing {
 
-			private double min;
-			private double max;
+			double min;
+			double max;
 
 			Clip() {
 				super("clip");
@@ -1302,9 +1387,9 @@ public class BioimageIoSpec {
 
 		public static class ScaleLinear extends Processing {
 
-			private double[] gain;
-			private double[] offset;
-			private String axes;
+			double[] gain;
+			double[] offset;
+			String axes;
 
 			ScaleLinear() {
 				super("scale_linear");
@@ -1334,9 +1419,9 @@ public class BioimageIoSpec {
 
 		protected abstract static class ProcessingWithMode extends Processing {
 
-			private Processing.ProcessingMode mode = Processing.ProcessingMode.PER_SAMPLE;
-			private String axes;
-			private double eps = 1e-6;
+			Processing.ProcessingMode mode = Processing.ProcessingMode.PER_SAMPLE;
+			String axes;
+			double eps = 1e-6;
 
 			ProcessingWithMode(String name) {
 				super(name);
@@ -1356,9 +1441,35 @@ public class BioimageIoSpec {
 
 		}
 
+		protected abstract static class ProcessingWithMode05 extends Processing {
+
+			Processing.ProcessingMode mode = Processing.ProcessingMode.PER_SAMPLE;
+			String[] axes;
+			double eps = 1e-6;
+
+
+			ProcessingWithMode05(String name) {
+				super(name);
+			}
+
+			public double getEps() {
+				return eps;
+			}
+
+			public Processing.ProcessingMode getMode() {
+				return mode;
+			}
+
+			public String[] getAxes() {
+				return axes;
+			}
+
+		}
+
+
 		public static class ScaleMeanVariance extends ProcessingWithMode {
 
-			private String referenceTensor;
+			String referenceTensor;
 
 			ScaleMeanVariance() {
 				super("scale_mean_variance");
@@ -1373,10 +1484,10 @@ public class BioimageIoSpec {
 
 		public static class ScaleRange extends ProcessingWithMode {
 
-			private String referenceTensor; // TODO: Figure out whether to use this somehow
+			String referenceTensor; // TODO: Figure out whether to use this somehow
 
-			private double minPercentile = 0.0;
-			private double maxPercentile = 100.0;
+			double minPercentile = 0.0;
+			double maxPercentile = 100.0;
 
 			ScaleRange() {
 				super("scale_range");
@@ -1400,8 +1511,8 @@ public class BioimageIoSpec {
 
 		public static class ZeroMeanUnitVariance extends ProcessingWithMode {
 
-			private double[] mean;
-			private double[] std;
+			double[] mean;
+			double[] std;
 
 			ZeroMeanUnitVariance() {
 				super("zero_mean_unit_variance");
@@ -1418,8 +1529,71 @@ public class BioimageIoSpec {
 
 		}
 
-		
-		
+
+		private static class Deserializer05 implements JsonDeserializer<BioimageIoSpec.Processing> {
+
+			@Override
+			public BioimageIoSpec.Processing deserialize(JsonElement json, Type typeOfT, JsonDeserializationContext context)
+					throws JsonParseException {
+
+				if (json.isJsonNull())
+					return null;
+
+				var obj = json.getAsJsonObject();
+				var name = obj.get("id").getAsString();
+				var kwargs = obj.has("kwargs") ? obj.get("kwargs").getAsJsonObject() : null;
+				switch (name) {
+					case "binarize":
+						var binarize = new BioimageIoSpec.Processing.Binarize();
+						binarize.threshold = deserializeField(context, kwargs, "threshold", Double.class, true);
+						return binarize;
+					case "clip":
+						var clip = new BioimageIoSpec.Processing.Clip();
+						clip.min = deserializeField(context, kwargs, "min", Double.class, Double.NEGATIVE_INFINITY);
+						clip.max = deserializeField(context, kwargs, "max", Double.class, Double.POSITIVE_INFINITY);
+						return clip;
+					case "scale_linear":
+						var scaleLinear = new BioimageIoSpec.Processing.ScaleLinear();
+						scaleLinear.axes = deserializeField(context, kwargs, "axes", String.class, false);
+						scaleLinear.gain = deserializeField(context, kwargs, "gain", double[].class, false);
+						scaleLinear.offset = deserializeField(context, kwargs, "offset", double[].class, false);
+						return scaleLinear;
+					case "scale_mean_variance":
+						var scaleMeanVariance = new BioImageIoSpec05.ScaleMeanVariance05();
+						((BioimageIoSpec.Processing.ProcessingWithMode05)scaleMeanVariance).mode = deserializeField(context, kwargs, "mode", BioimageIoSpec.Processing.ProcessingMode.class, false);
+						((BioimageIoSpec.Processing.ProcessingWithMode05)scaleMeanVariance).axes = deserializeField(context, kwargs, "axes", String.class, false);
+						((BioimageIoSpec.Processing.ProcessingWithMode05)scaleMeanVariance).eps = deserializeField(context, kwargs, "eps", Double.class, 1e-6);
+						scaleMeanVariance.referenceTensor = deserializeField(context, kwargs, "reference_tensor", String.class, null);
+						return scaleMeanVariance;
+					case "scale_range":
+						var scaleRange = new BioImageIoSpec05.ScaleRange05();
+						((BioimageIoSpec.Processing.ProcessingWithMode05)scaleRange).mode = deserializeField(context, kwargs, "mode", BioimageIoSpec.Processing.ProcessingMode.class, false);
+						((BioimageIoSpec.Processing.ProcessingWithMode05)scaleRange).axes = deserializeField(context, kwargs, "axes", String[].class, false);
+						((BioimageIoSpec.Processing.ProcessingWithMode05)scaleRange).eps = deserializeField(context, kwargs, "eps", Double.class, 1e-6);
+						scaleRange.referenceTensor = deserializeField(context, obj, "reference_tensor", String.class, null);
+						scaleRange.maxPercentile = deserializeField(context, kwargs, "max_percentile", Double.class, 0.0);
+						scaleRange.minPercentile = deserializeField(context, kwargs, "min_percentile", Double.class, 100.0);
+						return scaleRange;
+					case "sigmoid":
+						return new BioimageIoSpec.Processing.Sigmoid();
+					case "zero_mean_unit_variance":
+						var zeroMeanUnitVariance = new BioImageIoSpec05.ZeroMeanUnitVariance05();
+						((BioimageIoSpec.Processing.ProcessingWithMode05)zeroMeanUnitVariance).mode = deserializeField(context, kwargs, "mode", BioimageIoSpec.Processing.ProcessingMode.class, false);
+						((BioimageIoSpec.Processing.ProcessingWithMode05)zeroMeanUnitVariance).axes = deserializeField(context, kwargs, "axes", String.class, false);
+						((BioimageIoSpec.Processing.ProcessingWithMode05)zeroMeanUnitVariance).eps = deserializeField(context, kwargs, "eps", Double.class, 1e-6);
+						zeroMeanUnitVariance.mean = deserializeField(context, kwargs, "mean", double[].class, false);
+						zeroMeanUnitVariance.std = deserializeField(context, kwargs, "std", double[].class, false);
+						return zeroMeanUnitVariance;
+					default:
+						var processing = new BioimageIoSpec.Processing(name);
+						processing.kwargs = kwargs == null ? Collections.emptyMap() : context.deserialize(kwargs, Map.class);
+						return processing;
+				}
+			}
+
+		}
+
+
 		private static class Deserializer implements JsonDeserializer<Processing> {
 
 			@Override

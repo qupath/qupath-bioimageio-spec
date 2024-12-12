@@ -93,6 +93,12 @@ class TestBioImageIoSpec {
 		assertArrayEquals(new int[]{3, 4, 5, 6}, BioimageIoSpec.createShapeArray("xyct", Map.of('x', 3, 'y', 4, 'c', 5, 't', 6), -1));
 	}
 	
-	
-
+	@Test
+	void testParse05() {
+        try {
+            BioimageIoSpec.parseModel05(Path.of("/home/alan/Downloads/brightfield_bioio_v0_5/rdf.yaml"));
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
 }
