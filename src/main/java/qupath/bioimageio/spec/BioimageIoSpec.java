@@ -1282,7 +1282,7 @@ public class BioimageIoSpec {
 		public static enum ProcessingMode { FIXED, PER_DATASET, PER_SAMPLE }
 
 		private String name;
-		Map<String, Object> kwargs;
+		private Map<String, Object> kwargs;
 
 		Processing(String name) {
 			this.name = name;
@@ -1303,7 +1303,7 @@ public class BioimageIoSpec {
 				super("binarize");
 			}
 
-			double threshold = Double.NaN;
+			private double threshold = Double.NaN;
 
 			public double getThreshold() {
 				return threshold;
@@ -1313,8 +1313,8 @@ public class BioimageIoSpec {
 
 		public static class Clip extends Processing {
 
-			double min;
-			double max;
+			private double min;
+			private double max;
 
 			Clip() {
 				super("clip");
@@ -1332,9 +1332,9 @@ public class BioimageIoSpec {
 
 		public static class ScaleLinear extends Processing {
 
-			double[] gain;
-			double[] offset;
-			Axis[] axes;
+			private double[] gain;
+			private double[] offset;
+			private Axis[] axes;
 
 			ScaleLinear() {
 				super("scale_linear");
@@ -1364,9 +1364,9 @@ public class BioimageIoSpec {
 
 		protected abstract static class ProcessingWithMode extends Processing {
 
-			Processing.ProcessingMode mode = Processing.ProcessingMode.PER_SAMPLE;
-			Axis[] axes;
-			double eps = 1e-6;
+			private Processing.ProcessingMode mode = Processing.ProcessingMode.PER_SAMPLE;
+			private Axis[] axes;
+			private double eps = 1e-6;
 
 			ProcessingWithMode(String name) {
 				super(name);
@@ -1389,7 +1389,7 @@ public class BioimageIoSpec {
 
 		public static class ScaleMeanVariance extends ProcessingWithMode {
 
-			String referenceTensor;
+			private String referenceTensor;
 
 			ScaleMeanVariance() {
 				super("scale_mean_variance");
@@ -1404,10 +1404,10 @@ public class BioimageIoSpec {
 
 		public static class ScaleRange extends ProcessingWithMode {
 
-			String referenceTensor; // TODO: Figure out whether to use this somehow
+			private String referenceTensor; // TODO: Figure out whether to use this somehow
 
-			double minPercentile = 0.0;
-			double maxPercentile = 100.0;
+			private double minPercentile = 0.0;
+			private double maxPercentile = 100.0;
 
 			ScaleRange() {
 				super("scale_range");
@@ -1431,13 +1431,12 @@ public class BioimageIoSpec {
 
 		public static class ZeroMeanUnitVariance extends ProcessingWithMode {
 
-			double[] mean;
-			double[] std;
+			private double[] mean;
+			private double[] std;
 
 			ZeroMeanUnitVariance() {
 				super("zero_mean_unit_variance");
 			}
-
 
 			public double[] getMean() {
 				return mean == null ? null : mean.clone();
@@ -1571,35 +1570,42 @@ public class BioimageIoSpec {
 					var oj = curr.getAsJsonObject();
 					var id = oj.get("id");
 					var desc = oj.get("description");
-					axes[i] = switch (oj.get("type").getAsString()) {
-						case "time" -> new TimeAxisBase(
-								id, desc,
-								TimeUnit.valueOf(oj.get("unit").getAsString().toUpperCase()),
-								oj.get("scale").getAsDouble()
-						);
-						case "channel" -> {
+					switch (oj.get("type").getAsString()) {
+						case "time":
+							axes[i] = new TimeAxisBase(
+									id, desc,
+									TimeUnit.valueOf(oj.get("unit").getAsString().toUpperCase()),
+									oj.get("scale").getAsDouble()
+							);
+							break;
+						case "channel":
 							var namesJSON = oj.get("channel_names").getAsJsonArray();
 							List<String> names = new LinkedList<>();
-							for (JsonElement n: namesJSON) {
+							for (JsonElement n : namesJSON) {
 								names.add(n.getAsString());
 							}
-							yield new ChannelAxis(
+							axes[i] = new ChannelAxis(
 									id, desc,
 									names
 							);
-						}
-						case "index" -> new IndexAxisBase(id, desc);
-						case "space" -> new SpaceAxisBase(
-								id, desc,
-								SpaceUnit.valueOf(oj.get("unit").getAsString().toUpperCase()),
-								oj.get("scale").getAsDouble()
-						);
-						case "batch" -> new BatchAxis(id, desc, oj.get("size"));
-						default -> {
+							break;
+						case "index":
+							axes[i] = new IndexAxisBase(id, desc);
+							break;
+						case "space":
+							axes[i] = new SpaceAxisBase(
+									id, desc,
+									SpaceUnit.valueOf(oj.get("unit").getAsString().toUpperCase()),
+									oj.get("scale").getAsDouble()
+							);
+							break;
+						case "batch":
+							axes[i] = new BatchAxis(id, desc, oj.get("size"));
+							break;
+						default:
 							logger.error("Unknown object {}", oj);
-							yield null;
-						}
-					};
+							axes[i] = null;
+					}
 				}
 				return axes;
 			}
@@ -1608,29 +1614,29 @@ public class BioimageIoSpec {
 		}
 	}
 
-	public static abstract class Axis {
+	public interface Axis {
 	}
 
 	/**
 	 * Simple class to hold the old "bcyx" format from 0.4
 	 */
-	public static class CharAxis extends Axis {
+	public static class CharAxis implements Axis {
 		private final char axis;
 
-		public CharAxis(char c) {
+		CharAxis(char c) {
 			this.axis = c;
 		}
 	}
 
-	public static abstract class AxisBase extends Axis {
+	public static abstract class AxisBase implements Axis {
 		private String id;
 		private String description;
-		public AxisBase(String id, String description) {
+		AxisBase(String id, String description) {
 			this.id = id;
 			this.description = description;
 		}
 
-		public AxisBase(JsonElement id, JsonElement description) {
+		AxisBase(JsonElement id, JsonElement description) {
 			this(id == null ? "": id.getAsString(), description == null ? "": description.getAsString());
 		}
 	}
@@ -1638,7 +1644,7 @@ public class BioimageIoSpec {
 	public static class BatchAxis extends AxisBase {
 		private int size;
 		private boolean concatenable = true;
-		public BatchAxis(JsonElement id, JsonElement description, JsonElement size) {
+		BatchAxis(JsonElement id, JsonElement description, JsonElement size) {
 			super(id, description);
 			int s = 1;
 			if (size != null) {
@@ -1651,7 +1657,7 @@ public class BioimageIoSpec {
 	public static class ChannelAxis extends AxisBase {
 		private List<String> channel_names;
 
-		public ChannelAxis(JsonElement id, JsonElement description, List<String> channel_names) {
+		ChannelAxis(JsonElement id, JsonElement description, List<String> channel_names) {
 			super(id, description);
 			this.channel_names = channel_names;
 		}
@@ -1665,7 +1671,7 @@ public class BioimageIoSpec {
 		private double scale = 1.0;
 		private String unit = null;
 
-		public IndexAxisBase(JsonElement id, JsonElement description) {
+		IndexAxisBase(JsonElement id, JsonElement description) {
 			super(id, description);
 		}
 	}
@@ -1673,7 +1679,7 @@ public class BioimageIoSpec {
 	public static class IndexInputAxis extends IndexAxisBase {
 		private boolean concatenable = false;
 
-		public IndexInputAxis(JsonElement id, JsonElement description) {
+		IndexInputAxis(JsonElement id, JsonElement description) {
 			super(id, description);
 		}
 	}
@@ -1681,23 +1687,30 @@ public class BioimageIoSpec {
 	public static class IndexOutputAxis extends IndexAxisBase {
 		private Size size;
 
-		public IndexOutputAxis(JsonElement id, JsonElement description) {
+		IndexOutputAxis(JsonElement id, JsonElement description) {
 			super(id, description);
 		}
 	}
 
-	public static class Size {
+	public interface Size {
 		// todo: handle ints or SizeReference of DataDependentSize...???
 	}
 
-	public static class DataDependentSize extends Size {
+	public static class DataDependentSize implements Size {
 		private int min = 1;
 		private int max = Integer.MAX_VALUE;
 	}
 
-	public static class SizeReference extends Size {
-		private Axis referenceAxis; // todo: what class here?
+	public static class SizeReference implements Size {
+		private Axis referenceAxis; // todo: clarify how this is used
 		private int offset;
+	}
+
+	public static class FixedSize implements Size {
+		private final int size;
+		FixedSize(int size) {
+			this.size = size;
+		}
 	}
 
 	public static class TimeAxisBase extends AxisBase {
@@ -1781,11 +1794,11 @@ public class BioimageIoSpec {
 		private SpaceUnit unit;
 		private double scale = 1.0;
 
-		public SpaceAxisBase(JsonElement id, JsonElement description, String unit, double scale) {
+		SpaceAxisBase(JsonElement id, JsonElement description, String unit, double scale) {
 			this(id, description, SpaceUnit.valueOf(unit.toUpperCase()), scale);
 		}
 
-		public SpaceAxisBase(JsonElement id, JsonElement description, SpaceUnit unit, double scale) {
+		SpaceAxisBase(JsonElement id, JsonElement description, SpaceUnit unit, double scale) {
 			super(id, description);
 			this.unit = unit;
 			this.scale = scale;
