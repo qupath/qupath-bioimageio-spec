@@ -14,6 +14,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedHashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -106,6 +107,11 @@ public class BioimageIoSpec {
 			// Note: we can't support -inf or inf (but can support -.inf or .inf)
 			Yaml yaml = new Yaml(new SafeConstructor(new LoaderOptions()));
 			Map<String, ?> map = yaml.load(stream);
+			String version = map.get("format_version").toString();
+			BioImageIoVersion v = BioImageIoVersion.VERSION_0_4;
+			if (ModuleDescriptor.Version.parse(version).compareTo(ModuleDescriptor.Version.parse("0.5.0")) > 0) {
+				 v = BioImageIoVersion.VERSION_0_5;
+			}
 
 			var builder = new GsonBuilder()
 					.serializeSpecialFloatingPointValues()
@@ -118,7 +124,8 @@ public class BioimageIoSpec {
 					.registerTypeAdapter(WeightsEntry.class, new WeightsEntry.Deserializer())
 					.registerTypeAdapter(WeightsMap.class, new WeightsMap.Deserializer())
 					.registerTypeAdapter(Shape.class, new ShapeDeserializer())
-					.registerTypeAdapter(Processing.class, new Processing.Deserializer())
+					.registerTypeAdapter(Processing.class, new Processing.Deserializer(v))
+					.registerTypeAdapter(Axis[].class, new AxesDeserializer())
 					.registerTypeAdapter(Processing.ProcessingMode.class, new Processing.ModeDeserializer())
 					.setDateFormat("yyyy-MM-dd'T'HH:mm:ss");
 
@@ -136,84 +143,6 @@ public class BioimageIoSpec {
 		}
 	}
 
-	/**
-	 * Parse a model from a path.
-	 * This can either represent a yaml file, or a directory that contains a yaml file representing the model.
-	 *
-	 * @param path
-	 * @return
-	 * @throws IOException if the model cannot be found or parsed
-	 */
-	public static BioImageIoSpec05.BioimageIoModel05 parseModel05(Path path) throws IOException {
-
-		var pathYaml = findModelRdf(path);
-		if (pathYaml == null) {
-			throw new IOException("Can't find rdf.yaml from " + path);
-		}
-
-		try (var stream = Files.newInputStream(pathYaml)) {
-			var model = parseModel05(stream);
-			if (model != null) {
-				model.baseURI = pathYaml.getParent().toUri();
-				model.uri = pathYaml.toUri();
-			}
-			return model;
-		}
-	}
-
-	/**
-	 * Parse a model from an input stream.
-	 * Note that {@link BioimageIoModel#getBaseURI()} will return null in this case, because the base URI
-	 * is unknown.
-	 * @param stream
-	 * @return
-	 * @throws IOException if the model cannot be found or parsed
-	 */
-	public static BioImageIoSpec05.BioimageIoModel05 parseModel05(InputStream stream) throws IOException {
-
-		try {
-			// Important to use SafeConstructor to restrict potential classes that might be initiated
-			// Note: we can't support -inf or inf (but can support -.inf or .inf)
-			Yaml yaml = new Yaml(new SafeConstructor(new LoaderOptions()));
-			Map<String, ?> map = yaml.load(stream);
-			System.out.println(map.get("format_version"));
-
-			var builder = new GsonBuilder()
-					.serializeSpecialFloatingPointValues()
-					.setPrettyPrinting()
-					// .registerTypeAdapter(BioimageIoModel.class, new ModelDeserializer())
-					.registerTypeAdapter(BioimageIoResource.class, new ResourceDeserializer())
-					.registerTypeAdapter(BioimageIoDataset.class, new DatasetDeserializer())
-					.registerTypeAdapter(double[].class, new DoubleArrayDeserializer())
-					.registerTypeAdapter(Author.class, new Author.Deserializer())
-					.registerTypeAdapter(WeightsEntry.class, new WeightsEntry.Deserializer())
-					.registerTypeAdapter(WeightsMap.class, new WeightsMap.Deserializer())
-					.registerTypeAdapter(Shape.class, new ShapeDeserializer())
-					.registerTypeAdapter(Processing.ProcessingMode.class, new Processing.ModeDeserializer())
-					.setDateFormat("yyyy-MM-dd'T'HH:mm:ss");
-
-
-			ModuleDescriptor.Version version = ModuleDescriptor.Version.parse((String)map.get("format_version"));
-			if (version.compareTo(ModuleDescriptor.Version.parse("0.5.0")) >= 1) {
-				System.out.println("Trying new parsing");
-				builder.registerTypeAdapter(BioImageIoSpec05.BioimageIoModel05.class, new BioImageIoSpec05.ModelDeserializer05())
-						.registerTypeAdapter(Processing.class, new Processing.Deserializer05());
-			} else {
-				builder.registerTypeAdapter(BioimageIoModel.class, new ModelDeserializer());
-			}
-
-			var gson = builder.create();
-
-			var json = gson.toJson(map);
-
-			return gson.fromJson(json, BioImageIoSpec05.BioimageIoModel05.class);
-		} catch (Exception e) {
-			if (e instanceof IOException)
-				throw e;
-			else
-				throw new IOException(e);
-		}
-	}
 
 
 	/**
@@ -374,15 +303,24 @@ public class BioimageIoSpec {
 		resource.version = deserializeField(context, obj, "version", String.class, null);
 
 	}
+
 	
 	private static void deserializeModelFields(BioimageIoModel model, JsonObject obj, JsonDeserializationContext context, boolean doStrict) {
 		model.inputs = deserializeField(context, obj, "inputs", parameterizedListType(InputTensor.class), doStrict);
-		
-		model.testInputs = deserializeField(context, obj, "test_inputs", parameterizedListType(String.class), doStrict);
-		model.testOutputs = deserializeField(context, obj, "test_outputs", parameterizedListType(String.class), doStrict);
 
-		model.timestamp = deserializeField(context, obj, "timestamp", String.class, doStrict);
-		
+		if (model.isNewerThan("0.5.0")) {
+			model.testInputs = List.of();
+			model.testOutputs = List.of();
+			model.timestamp = "";
+		} else {
+			// now part of the tensor spec:
+			model.testInputs = deserializeField(context, obj, "test_inputs", parameterizedListType(String.class), doStrict);
+			// now part of the tensor spec:
+			model.testOutputs = deserializeField(context, obj, "test_outputs", parameterizedListType(String.class), doStrict);
+			// removed...?
+			model.timestamp = deserializeField(context, obj, "timestamp", String.class, doStrict);
+		}
+
 		model.weights = deserializeField(context, obj, "weights", WeightsMap.class, doStrict);
 
 		model.config = deserializeField(context, obj, "config", Map.class, Collections.emptyMap());
@@ -613,7 +551,14 @@ public class BioimageIoSpec {
 		public Map<String, ?> getAttachments() {
 			return attachments == null ? Collections.emptyMap() : Collections.unmodifiableMap(attachments);
 		}
-		
+
+		public boolean isNewerThan(ModuleDescriptor.Version version) {
+			return ModuleDescriptor.Version.parse(this.getFormatVersion()).compareTo(version) > 0;
+		}
+
+		public boolean isNewerThan(String version) {
+			return isNewerThan(ModuleDescriptor.Version.parse(version));
+		}
 	}
 	
 	/**
@@ -993,7 +938,7 @@ public class BioimageIoSpec {
 
 	private static class BaseTensor {
 
-		private String axes;
+		private Axis[] axes;
 		@SerializedName("data_type")
 		private String dataType;
 		private String name;
@@ -1003,7 +948,7 @@ public class BioimageIoSpec {
 		@SerializedName("data_range")
 		private double[] dataRange;
 
-		public String getAxes() {
+		public Axis[] getAxes() {
 			return axes;
 		}
 
@@ -1389,7 +1334,7 @@ public class BioimageIoSpec {
 
 			double[] gain;
 			double[] offset;
-			String axes;
+			Axis[] axes;
 
 			ScaleLinear() {
 				super("scale_linear");
@@ -1403,7 +1348,7 @@ public class BioimageIoSpec {
 				return offset == null ? null : offset.clone();
 			}
 
-			public String getAxes() {
+			public Axis[] getAxes() {
 				return axes;
 			}
 
@@ -1420,7 +1365,7 @@ public class BioimageIoSpec {
 		protected abstract static class ProcessingWithMode extends Processing {
 
 			Processing.ProcessingMode mode = Processing.ProcessingMode.PER_SAMPLE;
-			String axes;
+			Axis[] axes;
 			double eps = 1e-6;
 
 			ProcessingWithMode(String name) {
@@ -1435,32 +1380,7 @@ public class BioimageIoSpec {
 				return mode;
 			}
 
-			public String getAxes() {
-				return axes;
-			}
-
-		}
-
-		protected abstract static class ProcessingWithMode05 extends Processing {
-
-			Processing.ProcessingMode mode = Processing.ProcessingMode.PER_SAMPLE;
-			String[] axes;
-			double eps = 1e-6;
-
-
-			ProcessingWithMode05(String name) {
-				super(name);
-			}
-
-			public double getEps() {
-				return eps;
-			}
-
-			public Processing.ProcessingMode getMode() {
-				return mode;
-			}
-
-			public String[] getAxes() {
+			public Axis[] getAxes() {
 				return axes;
 			}
 
@@ -1529,72 +1449,13 @@ public class BioimageIoSpec {
 
 		}
 
-
-		private static class Deserializer05 implements JsonDeserializer<BioimageIoSpec.Processing> {
-
-			@Override
-			public BioimageIoSpec.Processing deserialize(JsonElement json, Type typeOfT, JsonDeserializationContext context)
-					throws JsonParseException {
-
-				if (json.isJsonNull())
-					return null;
-
-				var obj = json.getAsJsonObject();
-				var name = obj.get("id").getAsString();
-				var kwargs = obj.has("kwargs") ? obj.get("kwargs").getAsJsonObject() : null;
-				switch (name) {
-					case "binarize":
-						var binarize = new BioimageIoSpec.Processing.Binarize();
-						binarize.threshold = deserializeField(context, kwargs, "threshold", Double.class, true);
-						return binarize;
-					case "clip":
-						var clip = new BioimageIoSpec.Processing.Clip();
-						clip.min = deserializeField(context, kwargs, "min", Double.class, Double.NEGATIVE_INFINITY);
-						clip.max = deserializeField(context, kwargs, "max", Double.class, Double.POSITIVE_INFINITY);
-						return clip;
-					case "scale_linear":
-						var scaleLinear = new BioimageIoSpec.Processing.ScaleLinear();
-						scaleLinear.axes = deserializeField(context, kwargs, "axes", String.class, false);
-						scaleLinear.gain = deserializeField(context, kwargs, "gain", double[].class, false);
-						scaleLinear.offset = deserializeField(context, kwargs, "offset", double[].class, false);
-						return scaleLinear;
-					case "scale_mean_variance":
-						var scaleMeanVariance = new BioImageIoSpec05.ScaleMeanVariance05();
-						((BioimageIoSpec.Processing.ProcessingWithMode05)scaleMeanVariance).mode = deserializeField(context, kwargs, "mode", BioimageIoSpec.Processing.ProcessingMode.class, false);
-						((BioimageIoSpec.Processing.ProcessingWithMode05)scaleMeanVariance).axes = deserializeField(context, kwargs, "axes", String.class, false);
-						((BioimageIoSpec.Processing.ProcessingWithMode05)scaleMeanVariance).eps = deserializeField(context, kwargs, "eps", Double.class, 1e-6);
-						scaleMeanVariance.referenceTensor = deserializeField(context, kwargs, "reference_tensor", String.class, null);
-						return scaleMeanVariance;
-					case "scale_range":
-						var scaleRange = new BioImageIoSpec05.ScaleRange05();
-						((BioimageIoSpec.Processing.ProcessingWithMode05)scaleRange).mode = deserializeField(context, kwargs, "mode", BioimageIoSpec.Processing.ProcessingMode.class, false);
-						((BioimageIoSpec.Processing.ProcessingWithMode05)scaleRange).axes = deserializeField(context, kwargs, "axes", String[].class, false);
-						((BioimageIoSpec.Processing.ProcessingWithMode05)scaleRange).eps = deserializeField(context, kwargs, "eps", Double.class, 1e-6);
-						scaleRange.referenceTensor = deserializeField(context, obj, "reference_tensor", String.class, null);
-						scaleRange.maxPercentile = deserializeField(context, kwargs, "max_percentile", Double.class, 0.0);
-						scaleRange.minPercentile = deserializeField(context, kwargs, "min_percentile", Double.class, 100.0);
-						return scaleRange;
-					case "sigmoid":
-						return new BioimageIoSpec.Processing.Sigmoid();
-					case "zero_mean_unit_variance":
-						var zeroMeanUnitVariance = new BioImageIoSpec05.ZeroMeanUnitVariance05();
-						((BioimageIoSpec.Processing.ProcessingWithMode05)zeroMeanUnitVariance).mode = deserializeField(context, kwargs, "mode", BioimageIoSpec.Processing.ProcessingMode.class, false);
-						((BioimageIoSpec.Processing.ProcessingWithMode05)zeroMeanUnitVariance).axes = deserializeField(context, kwargs, "axes", String.class, false);
-						((BioimageIoSpec.Processing.ProcessingWithMode05)zeroMeanUnitVariance).eps = deserializeField(context, kwargs, "eps", Double.class, 1e-6);
-						zeroMeanUnitVariance.mean = deserializeField(context, kwargs, "mean", double[].class, false);
-						zeroMeanUnitVariance.std = deserializeField(context, kwargs, "std", double[].class, false);
-						return zeroMeanUnitVariance;
-					default:
-						var processing = new BioimageIoSpec.Processing(name);
-						processing.kwargs = kwargs == null ? Collections.emptyMap() : context.deserialize(kwargs, Map.class);
-						return processing;
-				}
-			}
-
-		}
-
-
 		private static class Deserializer implements JsonDeserializer<Processing> {
+
+			private final BioImageIoVersion version;
+
+			public Deserializer(BioImageIoVersion version) {
+				this.version = version;
+			}
 
 			@Override
 			public Processing deserialize(JsonElement json, Type typeOfT, JsonDeserializationContext context)
@@ -1604,7 +1465,7 @@ public class BioimageIoSpec {
 					return null;
 				
 				var obj = json.getAsJsonObject();
-				var name = obj.get("name").getAsString();
+				var name = version == BioImageIoVersion.VERSION_0_4 ? obj.get("name").getAsString() : obj.get("id").getAsString();
 				var kwargs = obj.has("kwargs") ? obj.get("kwargs").getAsJsonObject() : null;
 				switch (name) {
 				case "binarize":
@@ -1618,21 +1479,21 @@ public class BioimageIoSpec {
 					return clip;
 				case "scale_linear":
 					var scaleLinear = new Processing.ScaleLinear();
-					scaleLinear.axes = deserializeField(context, kwargs, "axes", String.class, false);
+					scaleLinear.axes = deserializeField(context, kwargs, "axes", String[].class, false);
 					scaleLinear.gain = deserializeField(context, kwargs, "gain", double[].class, false);
 					scaleLinear.offset = deserializeField(context, kwargs, "offset", double[].class, false);
 					return scaleLinear;
 				case "scale_mean_variance":
 					var scaleMeanVariance = new Processing.ScaleMeanVariance();
 					((ProcessingWithMode)scaleMeanVariance).mode = deserializeField(context, kwargs, "mode", Processing.ProcessingMode.class, false);
-					((ProcessingWithMode)scaleMeanVariance).axes = deserializeField(context, kwargs, "axes", String.class, false);
+					((ProcessingWithMode)scaleMeanVariance).axes = deserializeField(context, kwargs, "axes", Axis[].class, false);
 					((ProcessingWithMode)scaleMeanVariance).eps = deserializeField(context, kwargs, "eps", Double.class, 1e-6);
 					scaleMeanVariance.referenceTensor = deserializeField(context, kwargs, "reference_tensor", String.class, null);
 					return scaleMeanVariance;
 				case "scale_range":
 					var scaleRange = new Processing.ScaleRange();
 					((ProcessingWithMode)scaleRange).mode = deserializeField(context, kwargs, "mode", Processing.ProcessingMode.class, false);
-					((ProcessingWithMode)scaleRange).axes = deserializeField(context, kwargs, "axes", String.class, false);
+					((ProcessingWithMode)scaleRange).axes = deserializeField(context, kwargs, "axes", Axis[].class, false);
 					((ProcessingWithMode)scaleRange).eps = deserializeField(context, kwargs, "eps", Double.class, 1e-6);
 					scaleRange.referenceTensor = deserializeField(context, obj, "reference_tensor", String.class, null);
 					scaleRange.maxPercentile = deserializeField(context, kwargs, "max_percentile", Double.class, 0.0);
@@ -1643,7 +1504,7 @@ public class BioimageIoSpec {
 				case "zero_mean_unit_variance":
 					var zeroMeanUnitVariance = new Processing.ZeroMeanUnitVariance();
 					((ProcessingWithMode)zeroMeanUnitVariance).mode = deserializeField(context, kwargs, "mode", Processing.ProcessingMode.class, false);
-					((ProcessingWithMode)zeroMeanUnitVariance).axes = deserializeField(context, kwargs, "axes", String.class, false);
+					((ProcessingWithMode)zeroMeanUnitVariance).axes = deserializeField(context, kwargs, "axes", Axis[].class, false);
 					((ProcessingWithMode)zeroMeanUnitVariance).eps = deserializeField(context, kwargs, "eps", Double.class, 1e-6);
 					zeroMeanUnitVariance.mean = deserializeField(context, kwargs, "mean", double[].class, false);
 					zeroMeanUnitVariance.std = deserializeField(context, kwargs, "std", double[].class, false);
@@ -1685,5 +1546,250 @@ public class BioimageIoSpec {
 		}
 		
 	}
-	
+
+
+	public static class AxesDeserializer implements JsonDeserializer<Axis[]> {
+		@Override
+		public Axis[] deserialize(JsonElement jsonElement, Type type, JsonDeserializationContext jsonDeserializationContext) throws JsonParseException {
+			if (jsonElement.isJsonPrimitive()) {
+				var s = jsonElement.toString();
+				Axis[] axes = new Axis[s.length()];
+				for (int i = 0; i < axes.length; i++) {
+					axes[i] = new CharAxis(s.charAt(i));
+				}
+				return axes;
+			}
+			if (jsonElement.isJsonArray()) {
+				var arr = jsonElement.getAsJsonArray();
+				Axis[] axes = new Axis[arr.size()];
+				for (int i = 0; i < axes.length; i++) {
+					var curr = arr.get(i);
+					if (curr.isJsonPrimitive()) {
+						axes[i] = new CharAxis(curr.getAsString().charAt(0));
+						continue;
+					}
+					var oj = curr.getAsJsonObject();
+					var id = oj.get("id");
+					var desc = oj.get("description");
+					axes[i] = switch (oj.get("type").getAsString()) {
+						case "time" -> new TimeAxisBase(
+								id, desc,
+								TimeUnit.valueOf(oj.get("unit").getAsString().toUpperCase()),
+								oj.get("scale").getAsDouble()
+						);
+						case "channel" -> {
+							var namesJSON = oj.get("channel_names").getAsJsonArray();
+							List<String> names = new LinkedList<>();
+							for (JsonElement n: namesJSON) {
+								names.add(n.getAsString());
+							}
+							yield new ChannelAxis(
+									id, desc,
+									names
+							);
+						}
+						case "index" -> new IndexAxisBase(id, desc);
+						case "space" -> new SpaceAxisBase(
+								id, desc,
+								SpaceUnit.valueOf(oj.get("unit").getAsString().toUpperCase()),
+								oj.get("scale").getAsDouble()
+						);
+						case "batch" -> new BatchAxis(id, desc, oj.get("size"));
+						default -> {
+							logger.error("Unknown object {}", oj);
+							yield null;
+						}
+					};
+				}
+				return axes;
+			}
+			logger.error("Unknown JSON element {}", jsonElement);
+			return null;
+		}
+	}
+
+	public static abstract class Axis {
+	}
+
+	/**
+	 * Simple class to hold the old "bcyx" format from 0.4
+	 */
+	public static class CharAxis extends Axis {
+		private final char axis;
+
+		public CharAxis(char c) {
+			this.axis = c;
+		}
+	}
+
+	public static abstract class AxisBase extends Axis {
+		private String id;
+		private String description;
+		public AxisBase(String id, String description) {
+			this.id = id;
+			this.description = description;
+		}
+
+		public AxisBase(JsonElement id, JsonElement description) {
+			this(id == null ? "": id.getAsString(), description == null ? "": description.getAsString());
+		}
+	}
+
+	public static class BatchAxis extends AxisBase {
+		private int size;
+		private boolean concatenable = true;
+		public BatchAxis(JsonElement id, JsonElement description, JsonElement size) {
+			super(id, description);
+			int s = 1;
+			if (size != null) {
+				s = size.getAsInt();
+			}
+			this.size = s;
+		}
+	}
+
+	public static class ChannelAxis extends AxisBase {
+		private List<String> channel_names;
+
+		public ChannelAxis(JsonElement id, JsonElement description, List<String> channel_names) {
+			super(id, description);
+			this.channel_names = channel_names;
+		}
+
+		public int size() {
+			return channel_names.size();
+		}
+	}
+
+	public static class IndexAxisBase extends AxisBase {
+		private double scale = 1.0;
+		private String unit = null;
+
+		public IndexAxisBase(JsonElement id, JsonElement description) {
+			super(id, description);
+		}
+	}
+
+	public static class IndexInputAxis extends IndexAxisBase {
+		private boolean concatenable = false;
+
+		public IndexInputAxis(JsonElement id, JsonElement description) {
+			super(id, description);
+		}
+	}
+
+	public static class IndexOutputAxis extends IndexAxisBase {
+		private Size size;
+
+		public IndexOutputAxis(JsonElement id, JsonElement description) {
+			super(id, description);
+		}
+	}
+
+	public static class Size {
+		// todo: handle ints or SizeReference of DataDependentSize...???
+	}
+
+	public static class DataDependentSize extends Size {
+		private int min = 1;
+		private int max = Integer.MAX_VALUE;
+	}
+
+	public static class SizeReference extends Size {
+		private Axis referenceAxis; // todo: what class here?
+		private int offset;
+	}
+
+	public static class TimeAxisBase extends AxisBase {
+		private final String type = "time";
+		private final TimeUnit unit;
+		private final double scale;
+
+		TimeAxisBase(JsonElement id, JsonElement description, TimeUnit unit, double scale) {
+			super(id, description);
+			this.unit = unit;
+			this.scale = scale;
+		}
+	}
+
+	public static enum TimeUnit {
+		ATTOSECOND,
+		CENTISECOND,
+		DAY,
+		DECISECOND,
+		EXASECOND,
+		FEMTOSECOND,
+		GIGASECOND,
+		HECTOSECOND,
+		HOUR,
+		KILOSECOND,
+		MEGASECOND,
+		MICROSECOND,
+		MILLISECOND,
+		MINUTE,
+		NANOSECOND,
+		PETASECOND,
+		PICOSECOND,
+		SECOND,
+		TERASECOND,
+		YOCTOSECOND,
+		YOTTASECOND,
+		ZEPTOSECOND,
+		ZETTASECOND;
+	}
+
+	public static enum SpaceUnit {
+		ATTOMETER,
+		ANGSTROM,
+		CENTIMETER,
+		DECIMETER,
+		EXAMETER,
+		FEMTOMETER,
+		FOOT,
+		GIGAMETER,
+		HECTOMETER,
+		INCH,
+		KILOMETER,
+		MEGAMETER,
+		METER,
+		MICROMETER,
+		MILE,
+		MILLIMETER,
+		NANOMETER,
+		PARSEC,
+		PETAMETER,
+		PICOMETER,
+		TERAMETER,
+		YARD,
+		YOCTOMETER,
+		YOTTAMETER,
+		ZEPTOMETER,
+		ZETTAMETER;
+	}
+
+	public enum BioImageIoVersion {
+		VERSION_0_4("0.4"),
+		VERSION_0_5("0.5");
+		private final String version;
+
+		BioImageIoVersion(String s) {
+			this.version = s;
+		}
+	}
+
+	public static class SpaceAxisBase extends AxisBase {
+		private SpaceUnit unit;
+		private double scale = 1.0;
+
+		public SpaceAxisBase(JsonElement id, JsonElement description, String unit, double scale) {
+			this(id, description, SpaceUnit.valueOf(unit.toUpperCase()), scale);
+		}
+
+		public SpaceAxisBase(JsonElement id, JsonElement description, SpaceUnit unit, double scale) {
+			super(id, description);
+			this.unit = unit;
+			this.scale = scale;
+		}
+	}
+
 }

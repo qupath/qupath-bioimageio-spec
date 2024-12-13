@@ -6,6 +6,7 @@ import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Map;
@@ -96,7 +97,8 @@ class TestBioImageIoSpec {
 	@Test
 	void testParse05() {
         try {
-            BioimageIoSpec.parseModel05(Path.of("/home/alan/Downloads/brightfield_bioio_v0_5/rdf.yaml"));
+            var model = BioimageIoSpec.parseModel(Path.of("/home/alan/Downloads/brightfield_bioio_v0_5/rdf.yaml"));
+			System.out.println(Arrays.toString(model.getOutputs().get(0).getAxes()));
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
