@@ -1659,7 +1659,7 @@ public class BioimageIoSpec {
 
 		ChannelAxis(JsonElement id, JsonElement description, List<String> channel_names) {
 			super(id, description);
-			this.channel_names = channel_names;
+			this.channel_names = List.copyOf(channel_names);
 		}
 
 		public int size() {
