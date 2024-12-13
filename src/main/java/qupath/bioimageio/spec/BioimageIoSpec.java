@@ -267,7 +267,7 @@ public class BioimageIoSpec {
 	}
 	
 	
-	static void deserializeResourceFields(BioimageIoResource resource, JsonObject obj, JsonDeserializationContext context, boolean doStrict) {
+	private static void deserializeResourceFields(BioimageIoResource resource, JsonObject obj, JsonDeserializationContext context, boolean doStrict) {
 		
 		resource.formatVersion = deserializeField(context, obj, "format_version", String.class, doStrict);
 		resource.authors = deserializeField(context, obj, "authors", parameterizedListType(Author.class), doStrict);
@@ -342,11 +342,9 @@ public class BioimageIoSpec {
 		model.sampleOutputs = deserializeField(context, obj, "sample_outputs", parameterizedListType(String.class), Collections.emptyList());
 	}
 	
-	static Type parameterizedListType(Type typeOfList) {
+	private static Type parameterizedListType(Type typeOfList) {
 		return TypeToken.getParameterized(List.class, typeOfList).getType();
 	}
-
-	
 	
 	private static class ModelDeserializer implements JsonDeserializer<BioimageIoModel> {
 		
@@ -406,13 +404,13 @@ public class BioimageIoSpec {
 	 * @return
 	 * @throws IllegalArgumentException if doStrict is true and the field is not found
 	 */
-	static <T> T deserializeField(JsonDeserializationContext context, JsonObject obj, String name, Type typeOfT, boolean doStrict) throws IllegalArgumentException {
+	private static <T> T deserializeField(JsonDeserializationContext context, JsonObject obj, String name, Type typeOfT, boolean doStrict) throws IllegalArgumentException {
 		if (doStrict && !obj.has(name))
 			throw new IllegalArgumentException("Required field " + name + " not found");
 		return deserializeField(context, obj, name, typeOfT, null);
 	}
 
-	static <T> T deserializeField(JsonDeserializationContext context, JsonObject obj, String name, Type typeOfT, T defaultValue) {
+	private static <T> T deserializeField(JsonDeserializationContext context, JsonObject obj, String name, Type typeOfT, T defaultValue) {
 		if (obj.has(name)) {
 			return ensureUnmodifiable(context.deserialize(obj.get(name), typeOfT));
 		}
@@ -596,7 +594,7 @@ public class BioimageIoSpec {
 			return key;
 		}
 		
-		static WeightsEntry fromKey(String name) {
+		private static WeightsEntry fromKey(String name) {
 			for (var v : values()) {
 				if (v.key.equals(name) || v.alternatives.contains(name))
 					return v;
@@ -617,17 +615,13 @@ public class BioimageIoSpec {
 		
 	}
 	
-	static class WeightsMap {
+	private static class WeightsMap {
 		
 		private Map<WeightsEntry, ModelWeights> map;
 		
 		public Map<String, ModelWeights> withStringKeys() {
 			return map == null ? Collections.emptyMap() : map.entrySet().stream()
 					.collect(Collectors.toMap(e -> e.getKey().toString(), e -> e.getValue()));
-		}
-
-		public Map<WeightsEntry, ModelWeights> getMap() {
-			return map;
 		}
 
 		private static class Deserializer implements JsonDeserializer<WeightsMap> {
@@ -799,7 +793,7 @@ public class BioimageIoSpec {
 	 * @param list
 	 * @return
 	 */
-	static <T> List<T> toUnmodifiableList(List<T> list) {
+	private static <T> List<T> toUnmodifiableList(List<T> list) {
 		return list == null || list.isEmpty() ? Collections.emptyList() : Collections.unmodifiableList(list);
 	}
 	
@@ -1478,7 +1472,7 @@ public class BioimageIoSpec {
 					return clip;
 				case "scale_linear":
 					var scaleLinear = new Processing.ScaleLinear();
-					scaleLinear.axes = deserializeField(context, kwargs, "axes", String[].class, false);
+					scaleLinear.axes = deserializeField(context, kwargs, "axes", Axis[].class, false);
 					scaleLinear.gain = deserializeField(context, kwargs, "gain", double[].class, false);
 					scaleLinear.offset = deserializeField(context, kwargs, "offset", double[].class, false);
 					return scaleLinear;
