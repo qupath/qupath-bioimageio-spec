@@ -20,6 +20,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -60,8 +61,8 @@ public class BioimageIoSpec {
 	/**
 	 * Parse a model from a file or directory.
 	 * This can either be a yaml file, or a directory that contains a yaml file representing the model.
-	 * @param file
-	 * @return
+	 * @param file The file containing the YAML, or its parent directory.
+	 * @return The parsed model.
 	 * @throws IOException if the model cannot be found or parsed
 	 */
 	public static BioimageIoModel parseModel(File file) throws IOException {
@@ -71,8 +72,8 @@ public class BioimageIoSpec {
 	/**
 	 * Parse a model from a path.
 	 * This can either represent a yaml file, or a directory that contains a yaml file representing the model.
-	 * @param path
-	 * @return
+	 * @param path The path to the file containing the YAML, or its parent directory.
+	 * @return The parsed model.
 	 * @throws IOException if the model cannot be found or parsed
 	 */
 	public static BioimageIoModel parseModel(Path path) throws IOException {
@@ -96,8 +97,8 @@ public class BioimageIoSpec {
 	 * Parse a model from an input stream.
 	 * Note that {@link BioimageIoModel#getBaseURI()} will return null in this case, because the base URI 
 	 * is unknown.
-	 * @param stream
-	 * @return
+	 * @param stream A stream of YAML.
+	 * @return The parsed model.
 	 * @throws IOException if the model cannot be found or parsed
 	 */
 	public static BioimageIoModel parseModel(InputStream stream) throws IOException {
@@ -139,7 +140,7 @@ public class BioimageIoSpec {
 
 	/**
 	 * Create a shape array for a given axes.
-	 * The axes is expected to a string containing only the characters 
+	 * The axes are expected to a string containing only the characters
 	 * {@code bitczyx} as defined in the spec.
 	 * <p>
 	 * The purpose of this is to build shape arrays easily without needing to 
@@ -173,7 +174,7 @@ public class BioimageIoSpec {
 	 * List of file names that may contain the model.
 	 * Names should be checked in order, with preference given to the first that is found.
 	 */
-	static final List<String> MODEL_NAMES = Collections.unmodifiableList(Arrays.asList("model.yaml", "model.yml", "rdf.yaml", "rdf.yml"));
+	static final List<String> MODEL_NAMES = List.of("model.yaml", "model.yml", "rdf.yaml", "rdf.yml");
 	
 	static Path findModelRdf(Path path) throws IOException {
 		return findRdf(path, MODEL_NAMES);
@@ -194,27 +195,30 @@ public class BioimageIoSpec {
 		
 		if (Files.isDirectory(path)) {
 			// Check directory
-			List<Path> yamlFiles = Files.list(path).filter(BioimageIoSpec::isYamlPath).collect(Collectors.toList());
-			if (yamlFiles.isEmpty())
-				return null;
-			if (yamlFiles.size() == 1)
-				return yamlFiles.get(0);
-			for (var name : MODEL_NAMES) {
-				var modelFile = yamlFiles.stream()
-						.filter(p -> p.getFileName().toString().equalsIgnoreCase(name))
-						.findFirst()
-						.orElse(null);
-				if (modelFile != null)
-					return modelFile;
+			try (Stream<Path> pathStream = Files.list(path)) {
+				List<Path> yamlFiles = pathStream.filter(BioimageIoSpec::isYamlPath).collect(Collectors.toList());
+				if (yamlFiles.isEmpty())
+					return null;
+				if (yamlFiles.size() == 1)
+					return yamlFiles.get(0);
+				for (var name : MODEL_NAMES) {
+					var modelFile = yamlFiles.stream()
+							.filter(p -> p.getFileName().toString().equalsIgnoreCase(name))
+							.findFirst()
+							.orElse(null);
+					if (modelFile != null)
+						return modelFile;
+				}
 			}
 		} else if (path.toAbsolutePath().toString().toLowerCase().endsWith(".zip")) {
 			// Check zip file
-			var fs = FileSystems.newFileSystem(path, (ClassLoader)null);
-			for (var dir : fs.getRootDirectories()) {
-				for (var name : MODEL_NAMES) {
-					var p = dir.resolve(name);
-					if (Files.exists(p))
-						return p;
+			try (var fs = FileSystems.newFileSystem(path, (ClassLoader)null)) {
+				for (var dir : fs.getRootDirectories()) {
+					for (var name : MODEL_NAMES) {
+						var p = dir.resolve(name);
+						if (Files.exists(p))
+							return p;
+					}
 				}
 			}
 		}
@@ -394,14 +398,14 @@ public class BioimageIoSpec {
 	
 	
 	/**
-	 * Deserialize a field.
-	 * @param <T>
-	 * @param context
-	 * @param obj
-	 * @param name
-	 * @param typeOfT
+	 * Deserialize a field from a JSON object.
+	 * @param <T> The type of the field.
+	 * @param context The context used for deserialization.
+	 * @param obj The JSON object that contains the field.
+	 * @param name The name of the field.
+	 * @param typeOfT The type of the field.
 	 * @param doStrict if true, fail if the field is missing; otherwise, return null
-	 * @return
+	 * @return A parsed T object.
 	 * @throws IllegalArgumentException if doStrict is true and the field is not found
 	 */
 	private static <T> T deserializeField(JsonDeserializationContext context, JsonObject obj, String name, Type typeOfT, boolean doStrict) throws IllegalArgumentException {
@@ -419,10 +423,10 @@ public class BioimageIoSpec {
 	
 	/**
 	 * Minor optimization - ensure any lists, maps or sets are unmodifiable at this point, 
-	 * so as to avoid generating new unmodifiable wrappers later.
-	 * @param <T>
-	 * @param input
-	 * @return
+	 * to avoid generating new unmodifiable wrappers later.
+	 * @param <T> The type of the object.
+	 * @param input A collection that should be made unmodifiable (copied if not already unmodifiable).
+	 * @return An unmodifiable object of class T.
 	 */
 	@SuppressWarnings("unchecked")
 	private static <T> T ensureUnmodifiable(T input) {
@@ -560,14 +564,14 @@ public class BioimageIoSpec {
 	}
 	
 	/**
-	 * Dataset spec. Currently this provides equivalent information to {@link BioimageIoResource}.
+	 * Dataset spec. Currently, this provides equivalent information to {@link BioimageIoResource}.
 	 */
 	public static class BioimageIoDataset extends BioimageIoResource {}
 	
 	/**
 	 * Enum representing supported model weights.
 	 */
-	public static enum WeightsEntry {
+	public enum WeightsEntry {
 		
 		KERAS_HDF5("keras_hdf5"),
 		PYTORCH_STATE_DICT("pytorch_state_dict"),
@@ -580,11 +584,11 @@ public class BioimageIoSpec {
 		// Support older key names as alternatives
 		private final Set<String> alternatives;
 
-		private WeightsEntry(String key) {
+		WeightsEntry(String key) {
 			this(key, Collections.emptySet());
 		}
 		
-		private WeightsEntry(String key, Set<String> alternatives) {
+		WeightsEntry(String key, Set<String> alternatives) {
 			this.key = key;
 			this.alternatives = Collections.unmodifiableSet(alternatives);
 		}
@@ -699,7 +703,7 @@ public class BioimageIoSpec {
 		 * (the parent of {@link #getURI()}).
 		 * This may also represent a zipped file, if the model is read without unzipping 
 		 * the contents.
-		 * @return
+		 * @return The URI to the model file.
 		 */
 		public URI getBaseURI() {
 			if (baseURI != null)
@@ -712,15 +716,15 @@ public class BioimageIoSpec {
 		/**
 		 * Get the URI providing the location of the model.
 		 * This is typically a URI representing the yaml file for the model.
-		 * @return
+		 * @return The URI to the model file.
 		 */
 		public URI getURI() {
 			return uri;
 		}
 		
 		/**
-		 * Get a map view of the weights. It's generally better to use {@link #getWeights()}.
-		 * @return
+		 * Get a map view of the weights. It's generally better to use {@link #getWeights(WeightsEntry key)}.
+		 * @return a map view of the weights.
 		 */
 		public Map<String, ModelWeights> getWeights() {
 			return weights == null ? Collections.emptyMap() : weights.withStringKeys();
@@ -728,8 +732,8 @@ public class BioimageIoSpec {
 		
 		/**
 		 * Alternative to {@link #getWeights()} that corrects for keys that have been renamed.
-		 * @param key
-		 * @return
+		 * @param key The query key.
+		 * @return The weights value, or null if not found.
 		 */
 		public ModelWeights getWeights(WeightsEntry key) {
 			if (weights == null || key == null)
@@ -739,8 +743,8 @@ public class BioimageIoSpec {
 		
 		/**
 		 * Alternative to {@link #getWeights(WeightsEntry)} using a string key.
-		 * @param key
-		 * @return
+		 * @param key The query key string.
+		 * @return The weights value, or null if not found.
 		 */
 		public ModelWeights getWeights(String key) {
 			return getWeights(WeightsEntry.fromKey(key));
@@ -789,9 +793,9 @@ public class BioimageIoSpec {
     /**
 	 * Ensure the input is an unmodifiable list, or empty list if null.
 	 * Note that OpenJDK implementation is expected to return its input if already unmodifiable.
-	 * @param <T>
-	 * @param list
-	 * @return
+	 * @param <T> The type of list objects.
+	 * @param list The input list.
+	 * @return An unmodifiable list.
 	 */
 	private static <T> List<T> toUnmodifiableList(List<T> list) {
 		return list == null || list.isEmpty() ? Collections.emptyList() : Collections.unmodifiableList(list);
@@ -901,7 +905,7 @@ public class BioimageIoSpec {
 	}
 	
 	/**
-	 * Model parent. Currently this provides only an ID and URI.
+	 * Model parent. Currently, this provides only an ID and URI.
 	 * @author petebankhead
 	 *
 	 */
@@ -1025,7 +1029,7 @@ public class BioimageIoSpec {
 		/**
 		 * Get the shape, if this is defined explicitly.
 		 * Usually {@link #getTargetShape(int...)} is more useful.
-		 * @return
+		 * @return The shape in pixels.
 		 */
 		public int[] getShape() {
 			return shape == null ? new int[0] : shape.clone();
@@ -1040,8 +1044,8 @@ public class BioimageIoSpec {
 		 * <p>
 		 * For an explicit shape (without scale/offset/step etc.) the target 
 		 * does not influence the result.
-		 * @param target
-		 * @return
+		 * @param target The shape (in pixel width/height/etc) in pixels that we are requesting.
+		 * @return As close to the shape as the Shape object allows if a parameterized shape, or the fixed shape if fixed.
 		 */
 		public int[] getTargetShape(int... target) {
 			return getShape();
@@ -1049,7 +1053,7 @@ public class BioimageIoSpec {
 		
 		/**
 		 * Get the number of elements in the shape array.
-		 * @return
+		 * @return The number of elements in the shape array.
 		 */
 		public int getLength() {
 			return shape == null ? 0 : shape.length;
@@ -1081,7 +1085,6 @@ public class BioimageIoSpec {
 		private void validate(List<? extends BaseTensor> otherTensors) {
 			// todo: magically resolve axis refs
 		}
-
 
 		public static class ParameterizedInputShape extends Shape {
 			
@@ -1184,8 +1187,9 @@ public class BioimageIoSpec {
 
 		}
 		
-		public static class SizesShape extends Shape {
-			List<Size> sizes;
+		static class SizesShape extends Shape {
+			private final List<Size> sizes;
+
 			SizesShape(Size... sizes) {
 				this(Arrays.asList(sizes));
 			}
@@ -1283,7 +1287,7 @@ public class BioimageIoSpec {
 		 */
 		public enum ProcessingMode { FIXED, PER_DATASET, PER_SAMPLE }
 
-		private String name;
+		private final String name;
 		private Map<String, Object> kwargs;
 
 		Processing(String name) {
@@ -1640,7 +1644,7 @@ public class BioimageIoSpec {
 	 */
 	public interface Axis {
 		/**
-		 * Get the type of this axis (tibcxyz)
+		 * Get the type of this axis, see {@link AxisType}.
 		 * @return The axis type.
 		 */
 		AxisType getType();
@@ -1651,8 +1655,16 @@ public class BioimageIoSpec {
 		 */
 		Size getSize();
 
+		/**
+		 * Get the axis ID.
+		 * @return The axis ID.
+		 */
 		String getID();
 
+		/**
+		 * Ensure the parameters of the axis are valid.
+		 * @param tensors Other tensors in the model, in case they are referenced in this axis.
+		 */
 		void validate(List<? extends BaseTensor> tensors);
 	}
 
@@ -1667,13 +1679,13 @@ public class BioimageIoSpec {
 		Y("y"),
 		Z("z"),
 		T("t");
-		private String type;
+		private final String type;
 
 		AxisType(String type) {
 			this.type = type;
 		}
 
-		public static AxisType fromString(String s) {
+		static AxisType fromString(String s) {
 			return AxisType.valueOf(s.toUpperCase());
 		}
 
@@ -1711,13 +1723,12 @@ public class BioimageIoSpec {
 		@Override
 		public void validate(List<? extends BaseTensor> tensors) {
 			// can't validate char axes, these are validated at tensor level
-			return;
-		}
+        }
 	}
 
 	abstract static class AxisBase implements Axis {
-		String id;
-		private String description;
+		private final String id;
+		private final String description;
 		AxisBase(String id, String description) {
 			this.id = id;
 			this.description = description;
@@ -1734,8 +1745,8 @@ public class BioimageIoSpec {
 	}
 
 	static class BatchAxis extends AxisBase {
-		private int size;
-		private boolean concatenable = true;
+		private final int size;
+		private final boolean concatenable = true;
 		BatchAxis(JsonElement id, JsonElement description, JsonElement size) {
 			super(id, description);
 			int s = 1;
@@ -1758,14 +1769,11 @@ public class BioimageIoSpec {
 		@Override
 		public void validate(List<? extends BaseTensor> tensors) {
 			// fixed size doesn't need validation
-			return;
-		}
-
-
+        }
 	}
 	
 	static class ChannelAxis extends AxisBase implements ScaledAxis {
-		private List<String> channel_names;
+		private final List<String> channel_names;
 
 		ChannelAxis(JsonElement id, JsonElement description, List<String> channel_names) {
 			super(id, description);
@@ -1780,7 +1788,6 @@ public class BioimageIoSpec {
 		@Override
 		public void validate(List<? extends BaseTensor> tensors) {
 			// fixed size based on list of channels
-			return;
 		}
 
 		@Override
@@ -1795,8 +1802,8 @@ public class BioimageIoSpec {
 	}
 
 	abstract static class IndexAxisBase extends AxisBase implements ScaledAxis {
-		private double scale = 1.0;
-		private String unit = null;
+		private final double scale = 1.0;
+		private final String unit = null;
 
 		IndexAxisBase(JsonElement id, JsonElement description) {
 			super(id, description);
@@ -1820,7 +1827,7 @@ public class BioimageIoSpec {
 
 	static class IndexInputAxis extends IndexAxisBase {
 		private final Size size;
-		private boolean concatenable = false;
+		private final boolean concatenable = false;
 
 		IndexInputAxis(JsonElement id, JsonElement description, Size size) {
 			super(id, description);
@@ -1862,7 +1869,7 @@ public class BioimageIoSpec {
 
 		/**
 		 * Get the scale of this axis.
-		 * @return The scale (may be a constant).
+		 * @return The scale (might be constant).
 		 */
 		double getScale();
 	}
@@ -1934,7 +1941,7 @@ public class BioimageIoSpec {
 	 * A size that is only known after model inference (eg, detecting an unknown number of instances).
 	 */
 	static class DataDependentSize implements Size {
-		private int min = 1;
+		private int min = 0;
 		private int max = Integer.MAX_VALUE;
 
 		DataDependentSize(int min, int max) {
@@ -1966,7 +1973,7 @@ public class BioimageIoSpec {
 	/**
 	 * A tensor axis size (extent in pixels/frames) defined in relation to a reference axis.
 	 * <br>
-	 * `size = reference.size * reference.scale / axis.scale + offset`
+	 * <code>size = reference.size * reference.scale / axis.scale + offset</code>
 	 */
 	static class ReferencedSize implements Size {
 		// todo: in the python implementation, they store just axis IDs, then search through all tensors for the right axis ID on request
@@ -1976,8 +1983,8 @@ public class BioimageIoSpec {
 		private final String refID;
 		@SerializedName("tensor_id")
 		private final String tensorID;
-		private int offset;
-		private double scale;
+		private final int offset;
+		private final double scale;
 
 		private volatile ScaledAxis referenceAxis;
 
@@ -2112,7 +2119,7 @@ public class BioimageIoSpec {
 	}
 
 	public static class TimeOutputAxisWithHalo extends TimeOutputAxis implements WithHalo {
-		private int halo;
+		private final int halo;
 
 		TimeOutputAxisWithHalo(JsonElement id, JsonElement description, TimeUnit unit, double scale, Size size, int halo) {
 			super(id, description, unit, scale, size);
@@ -2148,7 +2155,7 @@ public class BioimageIoSpec {
 		YOCTOSECOND,
 		YOTTASECOND,
 		ZEPTOSECOND,
-		ZETTASECOND;
+		ZETTASECOND
 	}
 
 	public enum SpaceUnit {
@@ -2177,7 +2184,7 @@ public class BioimageIoSpec {
 		YOCTOMETER,
 		YOTTAMETER,
 		ZEPTOMETER,
-		ZETTAMETER;
+		ZETTAMETER
 	}
 
 	public enum BioImageIoVersion {
@@ -2191,7 +2198,7 @@ public class BioimageIoSpec {
 	}
 
 	public abstract static class SpaceAxisBase extends AxisBase implements ScaledAxis {
-		private SpaceUnit unit;
+		private final SpaceUnit unit;
 		private double scale = 1.0;
 
 		SpaceAxisBase(JsonElement id, JsonElement description, String unit, double scale) {
@@ -2206,7 +2213,7 @@ public class BioimageIoSpec {
 
 		@Override
 		public AxisType getType() {
-			return AxisType.valueOf(this.id.toUpperCase());
+			return AxisType.valueOf(this.getID().toUpperCase());
 		}
 
 		@Override
@@ -2217,7 +2224,7 @@ public class BioimageIoSpec {
 
 	public static class SpaceInputAxis extends SpaceAxisBase {
 		private final Size size;
-		private boolean concatenable = false;
+		private final boolean concatenable = false;
 
 		SpaceInputAxis(JsonElement id, JsonElement description, String unit, double scale, Size size) {
 			super(id, description, unit, scale);
@@ -2252,7 +2259,7 @@ public class BioimageIoSpec {
 		}
 	}
 
-	public static class SpaceOutputAxisWithHalo extends SpaceOutputAxis implements WithHalo {
+	static class SpaceOutputAxisWithHalo extends SpaceOutputAxis implements WithHalo {
 		private ReferencedSize size;
 		private int halo = 0;
 
@@ -2266,11 +2273,16 @@ public class BioimageIoSpec {
 	}
 
 	/**
+	 * An axis with a halo.
 	 * The halo should be cropped from the output tensor to avoid boundary effects.
 	 * It is to be cropped from both sides, i.e. `size_after_crop = size - 2 * halo`.
 	 * To document a halo that is already cropped by the model use `size.offset` instead.
 	 */
-	public interface WithHalo {
+	interface WithHalo {
+		/**
+		 * Get the size of the halo for this axis.
+		 * @return The size of the halo in pixels.
+		 */
 		int getHalo();
 	}
 
