@@ -19,6 +19,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -123,7 +124,7 @@ public class BioimageIoSpec {
 					.registerTypeAdapter(WeightsEntry.class, new WeightsEntry.Deserializer())
 					.registerTypeAdapter(WeightsMap.class, new WeightsMap.Deserializer())
 					.registerTypeAdapter(Shape.class, new ShapeDeserializer())
-					.registerTypeAdapter(Processing.class, new Processing.Deserializer(v))
+					.registerTypeAdapter(Processing.class, new Processing.ProcessingDeserializer())
 					.registerTypeAdapter(Axis[].class, new AxesDeserializer())
 					.registerTypeAdapter(Processing.ProcessingMode.class, new Processing.ModeDeserializer())
 					.setDateFormat("yyyy-MM-dd'T'HH:mm:ss");
@@ -135,10 +136,7 @@ public class BioimageIoSpec {
 			
 			return gson.fromJson(json, BioimageIoModel.class);
 		} catch (Exception e) {
-			if (e instanceof IOException)
-				throw e;
-			else
-				throw new IOException(e);
+            throw new IOException(e);
 		}
 	}
 
@@ -155,7 +153,7 @@ public class BioimageIoSpec {
 	 * An example:
 	 * <pre>
 	 * <code>
-	 * int[] shape = getTargetShape("byxc", Map.of('x', 256, 'y', 512), 1);
+	 * int[] shape = createShapeArray("byxc", Map.of('x', 256, 'y', 512), 1);
 	 * </code>
 	 * </pre>
 	 * <p>
@@ -201,7 +199,7 @@ public class BioimageIoSpec {
 		
 		if (Files.isDirectory(path)) {
 			// Check directory
-			List<Path> yamlFiles = Files.list(path).filter(p -> isYamlPath(p)).collect(Collectors.toList());
+			List<Path> yamlFiles = Files.list(path).filter(BioimageIoSpec::isYamlPath).collect(Collectors.toList());
 			if (yamlFiles.isEmpty())
 				return null;
 			if (yamlFiles.size() == 1)
@@ -306,6 +304,11 @@ public class BioimageIoSpec {
 	
 	private static void deserializeModelFields(BioimageIoModel model, JsonObject obj, JsonDeserializationContext context, boolean doStrict) {
 		model.inputs = deserializeField(context, obj, "inputs", parameterizedListType(InputTensor.class), doStrict);
+		List<BaseTensor> tensors = new ArrayList<>(List.copyOf(model.inputs));
+		for (var tensor: model.inputs) {
+			tensor.validate(tensors);
+		}
+
 
 		if (model.isNewerThan("0.5.0")) {
 			model.testInputs = List.of();
@@ -325,7 +328,10 @@ public class BioimageIoSpec {
 		model.config = deserializeField(context, obj, "config", Map.class, Collections.emptyMap());
 
 		model.outputs = deserializeField(context, obj, "outputs", parameterizedListType(OutputTensor.class), Collections.emptyList());
-
+		tensors.addAll(model.outputs);
+		for (var tensor: model.outputs) {
+			tensor.validate(tensors);
+		}
 		model.packagedBy = deserializeField(context, obj, "packaged_by", parameterizedListType(Author.class), Collections.emptyList());
 
 		model.parent = deserializeField(context, obj, "parent", ModelParent.class, null);
@@ -929,13 +935,13 @@ public class BioimageIoSpec {
 		
 	}
 
-	private static class BaseTensor {
+	public abstract static class BaseTensor {
 
 		private Axis[] axes;
 		@SerializedName("data_type")
 		private String dataType;
 		private String name;
-		private String id; // todo: some way to match these on input and output...
+		String id; // todo: some way to match these on input and output...
 
 		private Shape shape;
 
@@ -955,58 +961,21 @@ public class BioimageIoSpec {
 		}
 
 		public Shape getShape() {
-			// todo: handle shape moving from tensor field to axis
-			// todo: could wrap calling shape of each axis...?
-			// but need to handle parameterized/datasependent/etc sizes
-			// need to review v0.5 docs on sizes/shapes
-			return shape;
+			return shape != null ? shape : new Shape.SizesShape(Arrays.stream(axes).map(Axis::getSize).collect(Collectors.toList()));
 		}
 
 		public double[] getDataRange() {
 			return dataRange == null ? null : dataRange.clone();
 		}
 
-
-	}
-
-	/**
-	 * Deal with the awkwardness of -inf and inf instead of .inf and .inf.
-	 * This otherwise caused several failures for data range.
-	 */
-	private static class DoubleArrayDeserializer implements JsonDeserializer<double[]> {
-
-		@Override
-		public double[] deserialize(JsonElement json, Type typeOfT, JsonDeserializationContext context)
-				throws JsonParseException {
-			
-			if (json.isJsonNull())
-				return null;
-			if (json.isJsonArray()) {
-				List<Double> values = new ArrayList<>();
-				for (var jsonVal : json.getAsJsonArray()) {
-					if (jsonVal.isJsonNull()) {
-						logger.warn("Found null when expecting a double - will replace with NaN");
-						values.add(Double.NaN);
-						continue;
-					}
-					var jsonPrimitive = jsonVal.getAsJsonPrimitive();
-					if (jsonPrimitive.isNumber()) {
-						values.add(jsonPrimitive.getAsDouble());
-					} else {
-						var s = jsonPrimitive.getAsString();
-						if ("inf".equals(s.toLowerCase()))
-							values.add(Double.POSITIVE_INFINITY);
-						else if ("-inf".equals(s.toLowerCase()))
-							values.add(Double.NEGATIVE_INFINITY);
-						else
-							values.add(Double.parseDouble(s));
-					}
-				}
-				return values.stream().mapToDouble(d -> d.doubleValue()).toArray();
-			} else
-				throw new JsonParseException("Can't parse data range from " + json);
+		void validate(List<? extends BaseTensor> otherTensors) {
+			if (shape != null) {
+				shape.validate(otherTensors);
+			}
+			for (var axis: getAxes()) {
+				axis.validate(otherTensors);
+			}
 		}
-		
 	}
 
 	/**
@@ -1024,7 +993,6 @@ public class BioimageIoSpec {
 		public String toString() {
 			return "Input tensor [" + getShape() + ", processing steps=" + getPreprocessing().size() + "]";
 		}
-
 	}
 
 	/**
@@ -1114,8 +1082,12 @@ public class BioimageIoSpec {
 				return "Shape (unknown)";
 			return "Shape (" + Arrays.toString(shape) + ")";
 		}
-	
-		
+
+		private void validate(List<? extends BaseTensor> otherTensors) {
+			// todo: magically resolve axis refs
+		}
+
+
 		public static class ParameterizedInputShape extends Shape {
 			
 			private int[] min;
@@ -1219,12 +1191,32 @@ public class BioimageIoSpec {
 		
 		public static class SizesShape extends Shape {
 			List<Size> sizes;
-			// todo: what do I need to override from Shape???
-			public SizesShape(Size... sizes) {
-				this.sizes = Arrays.asList(sizes);
+			SizesShape(Size... sizes) {
+				this(Arrays.asList(sizes));
+			}
+
+			SizesShape(List<Size> sizes) {
+				this.sizes = sizes;
 				this.shape = this.sizes.stream().mapToInt(Size::getSize).toArray();
 			}
 
+			@Override
+			public int[] getShape() {
+				return sizes.stream().mapToInt(Size::getSize).toArray();
+			}
+
+			@Override
+			public int[] getTargetShape(int[] target) {
+				assert target.length == sizes.size();
+				return IntStream.range(0, target.length)
+						.map(i -> sizes.get(i).getTargetSize(target[i]))
+						.toArray();
+			}
+
+			@Override
+			public int[] getShapeStep() {
+				return sizes.stream().mapToInt(Size::getStep).toArray();
+			}
 		}
 	}
 
@@ -1294,7 +1286,7 @@ public class BioimageIoSpec {
 		/**
 		 * Requested mode for pre- or post-processing.
 		 */
-		public static enum ProcessingMode { FIXED, PER_DATASET, PER_SAMPLE }
+		public enum ProcessingMode { FIXED, PER_DATASET, PER_SAMPLE }
 
 		private String name;
 		private Map<String, Object> kwargs;
@@ -1463,13 +1455,7 @@ public class BioimageIoSpec {
 
 		}
 
-		private static class Deserializer implements JsonDeserializer<Processing> {
-
-			private final BioImageIoVersion version;
-
-			public Deserializer(BioImageIoVersion version) {
-				this.version = version;
-			}
+		private static class ProcessingDeserializer implements JsonDeserializer<Processing> {
 
 			@Override
 			public Processing deserialize(JsonElement json, Type typeOfT, JsonDeserializationContext context)
@@ -1479,7 +1465,7 @@ public class BioimageIoSpec {
 					return null;
 				
 				var obj = json.getAsJsonObject();
-				var name = version == BioImageIoVersion.VERSION_0_4 ? obj.get("name").getAsString() : obj.get("id").getAsString();
+				var name = obj.has("name") ? obj.get("name").getAsString() : obj.get("id").getAsString();
 				var kwargs = obj.has("kwargs") ? obj.get("kwargs").getAsJsonObject() : null;
 				switch (name) {
 				case "binarize":
@@ -1561,12 +1547,33 @@ public class BioimageIoSpec {
 		
 	}
 
+	private static Size deserializeSize(JsonDeserializationContext context, JsonElement jsonElement, JsonElement scale) {
+		if (jsonElement == null || jsonElement.isJsonNull()) {
+			return null;
+		}
+		if (jsonElement.isJsonPrimitive()) {
+			return new FixedSize(jsonElement.getAsInt());
+		}
+		if (jsonElement.isJsonObject()) {
+			JsonObject obj = jsonElement.getAsJsonObject();
+			if (obj.has("min") && obj.has("step")) {
+				return context.deserialize(obj, ParameterizedSize.class);
+			}
+			if (obj.has("min") && obj.has("max")) {
+				return context.deserialize(obj, DataDependentSize.class);
+			}
+			if (obj.has("axis_id") && obj.has("tensor_id")) {
+				return new ReferencedSize(obj.get("axis_id").getAsString(), obj.get("tensor_id").getAsString(), scale, obj.get("offset"));
+			}
+		}
+		throw new JsonParseException("No idea what type of size this is, sorry!");
+	}
 
 	public static class AxesDeserializer implements JsonDeserializer<Axis[]> {
 		@Override
 		public Axis[] deserialize(JsonElement jsonElement, Type type, JsonDeserializationContext jsonDeserializationContext) throws JsonParseException {
 			if (jsonElement.isJsonPrimitive()) {
-				var s = jsonElement.toString();
+				var s = jsonElement.getAsString();
 				Axis[] axes = new Axis[s.length()];
 				for (int i = 0; i < axes.length; i++) {
 					axes[i] = new CharAxis(s.charAt(i));
@@ -1582,16 +1589,18 @@ public class BioimageIoSpec {
 						axes[i] = new CharAxis(curr.getAsString().charAt(0));
 						continue;
 					}
+
 					var oj = curr.getAsJsonObject();
 					var id = oj.get("id");
 					var desc = oj.get("description");
+					Size size = deserializeSize(jsonDeserializationContext, oj.get("size"), oj.get("scale"));
 					switch (oj.get("type").getAsString()) {
 						case "time":
 							axes[i] = new TimeInputAxis(
 									id, desc,
 									TimeUnit.valueOf(oj.get("unit").getAsString().toUpperCase()),
 									oj.get("scale").getAsDouble(),
-									new FixedSize(10) // todo
+									size
 							);
 							break;
 						case "channel":
@@ -1606,14 +1615,14 @@ public class BioimageIoSpec {
 							);
 							break;
 						case "index":
-							axes[i] = new IndexInputAxis(id, desc, new FixedSize(10)); // todo: parse size
+							axes[i] = new IndexInputAxis(id, desc, size);
 							break;
 						case "space":
 							axes[i] = new SpaceInputAxis(
 									id, desc,
 									oj.get("unit").getAsString().toUpperCase(),
 									oj.get("scale").getAsDouble(),
-									new FixedSize(10) // todo: parse size
+									size
 							);
 							break;
 						case "batch":
@@ -1631,20 +1640,40 @@ public class BioimageIoSpec {
 		}
 	}
 
+	/**
+	 * Base axis class for 0.4 and 0.5 axes.
+	 */
 	public interface Axis {
+		/**
+		 * Get the type of this axis (tibcxyz)
+		 * @return The axis type.
+		 */
 		AxisType getType();
+
+		/**
+		 * Get the size of this axis.
+		 * @return The size, unless it's a 0.4 axis (these have no size).
+		 */
 		Size getSize();
+
+		String getID();
+
+		void validate(List<? extends BaseTensor> tensors);
 	}
 
+	/**
+	 * The type of axis. Batch (b), index (i), channel (c), x, y, z, time (t).
+	 */
 	public enum AxisType {
-		BATCH("b"),
-		INDEX("i"),
-		CHANNEL("c"),
+		B("b"),
+		I("i"),
+		C("c"),
 		X("x"),
 		Y("y"),
 		Z("z"),
-		TIME("t");
+		T("t");
 		private String type;
+
 		AxisType(String type) {
 			this.type = type;
 		}
@@ -1662,7 +1691,7 @@ public class BioimageIoSpec {
 	/**
 	 * Simple class to hold the old "bcyx" format from 0.4
 	 */
-	public static class CharAxis implements Axis {
+	static class CharAxis implements Axis {
 		private final char axis;
 
 		CharAxis(char c) {
@@ -1678,9 +1707,20 @@ public class BioimageIoSpec {
 		public Size getSize() {
 			throw new UnsupportedOperationException("Cannot get Size of legacy/char axes");
 		}
+
+		@Override
+		public String getID() {
+			return "";
+		}
+
+		@Override
+		public void validate(List<? extends BaseTensor> tensors) {
+			// can't validate char axes, these are validated at tensor level
+			return;
+		}
 	}
 
-	public abstract static class AxisBase implements Axis {
+	abstract static class AxisBase implements Axis {
 		String id;
 		private String description;
 		AxisBase(String id, String description) {
@@ -1691,9 +1731,14 @@ public class BioimageIoSpec {
 		AxisBase(JsonElement id, JsonElement description) {
 			this(id == null ? "": id.getAsString().toLowerCase(), description == null ? "": description.getAsString());
 		}
+
+		@Override
+		public String getID() {
+			return this.id;
+		}
 	}
 
-	public static class BatchAxis extends AxisBase {
+	static class BatchAxis extends AxisBase {
 		private int size;
 		private boolean concatenable = true;
 		BatchAxis(JsonElement id, JsonElement description, JsonElement size) {
@@ -1707,7 +1752,7 @@ public class BioimageIoSpec {
 
 		@Override
 		public AxisType getType() {
-			return AxisType.BATCH;
+			return AxisType.B;
 		}
 
 		@Override
@@ -1715,10 +1760,16 @@ public class BioimageIoSpec {
 			return new FixedSize(size);
 		}
 
+		@Override
+		public void validate(List<? extends BaseTensor> tensors) {
+			// fixed size doesn't need validation
+			return;
+		}
+
 
 	}
 	
-	public static class ChannelAxis extends AxisBase implements ScaledAxis {
+	static class ChannelAxis extends AxisBase implements ScaledAxis {
 		private List<String> channel_names;
 
 		ChannelAxis(JsonElement id, JsonElement description, List<String> channel_names) {
@@ -1730,9 +1781,16 @@ public class BioimageIoSpec {
 		public Size getSize() {
 			return new FixedSize(channel_names.size());
 		}
+
+		@Override
+		public void validate(List<? extends BaseTensor> tensors) {
+			// fixed size based on list of channels
+			return;
+		}
+
 		@Override
 		public AxisType getType() {
-			return AxisType.CHANNEL;
+			return AxisType.C;
 		}
 
 		@Override
@@ -1741,7 +1799,7 @@ public class BioimageIoSpec {
 		}
 	}
 
-	public abstract static class IndexAxisBase extends AxisBase implements ScaledAxis {
+	abstract static class IndexAxisBase extends AxisBase implements ScaledAxis {
 		private double scale = 1.0;
 		private String unit = null;
 
@@ -1751,7 +1809,7 @@ public class BioimageIoSpec {
 
 		@Override
 		public AxisType getType() {
-			return AxisType.INDEX;
+			return AxisType.I;
 		}
 
 		@Override
@@ -1765,7 +1823,7 @@ public class BioimageIoSpec {
 		}
 	}
 
-	public static class IndexInputAxis extends IndexAxisBase {
+	static class IndexInputAxis extends IndexAxisBase {
 		private final Size size;
 		private boolean concatenable = false;
 
@@ -1777,54 +1835,136 @@ public class BioimageIoSpec {
 		public Size getSize() {
 			return this.size;
 		}
+
+		@Override
+		public void validate(List<? extends BaseTensor> tensors) {
+			size.validate(tensors);
+		}
 	}
 
-	public static class IndexOutputAxis extends IndexAxisBase {
+	static class IndexOutputAxis extends IndexAxisBase {
 		private Size size;
 
 		IndexOutputAxis(JsonElement id, JsonElement description) {
 			super(id, description);
 		}
+
+		@Override
+		public void validate(List<? extends BaseTensor> tensors) {
+			size.validate(tensors);
+		}
 	}
 
+	/**
+	 * Axes that have both size and scale.
+	 */
 	public interface ScaledAxis {
+		/**
+		 * Get the size of this axis.
+		 * @return The size.
+		 */
 		Size getSize();
+
+		/**
+		 * Get the scale of this axis.
+		 * @return The scale (may be a constant).
+		 */
 		double getScale();
 	}
 
+	/**
+	 * An axis size. Can be fixed, data-dependent (unknown), parameterized, or based on another axis.
+	 */
 	public interface Size {
 		int NO_SIZE = -1;
+
+		/**
+		 * Get the default size of this axis. {@link #getTargetSize(int)} may be more useful.
+		 * @return The size of this axis.
+		 */
 		int getSize();
-		// todo: handle ints or SizeReference or DataDependentSize...???
+
+		/**
+		 * Get a size as close as possible to a target.
+		 * @param target The target size.
+		 * @return The fixed output size, {@link #NO_SIZE} or as close as we can get to the target size.
+		 */
+		int getTargetSize(int target);
+
+		/**
+		 * Get the step size of this axis size.
+		 * @return {@link #NO_SIZE} for any axis without a step size, otherwise the size.
+		 */
+		int getStep();
+
+		void validate(List<? extends BaseTensor> tensors);
 	}
 
 	/**
 	 * Describes a range of valid tensor axis sizes as `size = min + n*step`.
 	 */
-	public static class ParameterizedSize implements Size {
-		private int min;
-		private int step;
-		private int n;
+	static class ParameterizedSize implements Size {
+		private final int min;
+		private final int step;
 
-		ParameterizedSize(int min, int step, int n) {
+		ParameterizedSize(int min, int step) {
 			this.min = min;
 			this.step = step;
-			this.n = n;
 		}
 		
 		@Override
 		public int getSize() {
-			return min + step * n;
+			return getTargetSize(1);
+		}
+
+		@Override
+		public int getTargetSize(int target) {
+			if (target < 0 || step <= 0)
+				return min;
+			else
+				return min + (int)Math.round((target - min)/(double)step) * step;
+		}
+		@Override
+		public int getStep() {
+			return step;
+		}
+
+		@Override
+		public void validate(List<? extends BaseTensor> tensors) {
+			// todo: no external deps but should check param validity
 		}
 	}
-	
-	public static class DataDependentSize implements Size {
+
+	/**
+	 * A size that is only known after model inference (eg, detecting an unknown number of instances).
+	 */
+	static class DataDependentSize implements Size {
 		private int min = 1;
 		private int max = Integer.MAX_VALUE;
+
+		DataDependentSize(int min, int max) {
+			this.min = min;
+			this.max = max;
+		}
 
 		@Override
 		public int getSize() {
 			return NO_SIZE;
+		}
+
+		@Override
+		public int getTargetSize(int target) {
+			return getSize();
+		}
+
+		@Override
+		public int getStep() {
+			return NO_SIZE;
+		}
+
+		@Override
+		public void validate(List<? extends BaseTensor> tensors) {
+			// nothing to validate
 		}
 	}
 
@@ -1833,20 +1973,64 @@ public class BioimageIoSpec {
 	 * <br>
 	 * `size = reference.size * reference.scale / axis.scale + offset`
 	 */
-	public static class SizeReference implements Size {
-		private ScaledAxis referenceAxis;
-		private ScaledAxis axis;
+	static class ReferencedSize implements Size {
+		// todo: in the python implementation, they store just axis IDs, then search through all tensors for the right axis ID on request
+		// I think we should try to have a handle on them on parsing, rather than throwing a runtime error...?
+		private volatile String thisID;
+		@SerializedName("axis_id")
+		private final String refID;
+		@SerializedName("tensor_id")
+		private final String tensorID;
 		private int offset;
+		private double scale;
+
+		private volatile ScaledAxis referenceAxis;
+
+		ReferencedSize(String refID, String tensorID) {
+			this(refID, tensorID, 1, 0);
+		}
+
+		ReferencedSize(String refID, String tensorID, double scale, int offset) {
+			this.refID = refID;
+			this.tensorID = tensorID;
+			this.scale = scale;
+			this.offset = offset;
+		}
+
+		ReferencedSize(String refID, String tensorID, JsonElement scale, JsonElement offset) {
+			this(refID, tensorID, (scale != null) ? scale.getAsDouble() : 1.0, (offset != null) ? offset.getAsInt() : 0);
+		}
 
 		@Override
 		public int getSize() {
-			return (int) (referenceAxis.getSize().getSize() * referenceAxis.getScale() / axis.getScale() + offset);
+			return (int) (referenceAxis.getSize().getSize() * referenceAxis.getScale() / scale + offset);
 		}
-		// todo: in the python implementation, they store just axis IDs, then search through all tensors for the right axis ID on request
-		// I think we should try to have a handle on them on parsing, rather than throwing a runtime error...?
+
+		@Override
+		public int getTargetSize(int target) {
+			return getSize();
+		}
+
+		@Override
+		public int getStep() {
+			return NO_SIZE;
+		}
+
+		@Override
+		public void validate(List<? extends BaseTensor> tensors) {
+			var tensor = tensors.stream().filter(t -> t.id.equals(tensorID)).findFirst().orElse(null);
+			if (tensor == null) {
+				throw new JsonParseException("Cannot find reference tensor " + tensorID);
+			}
+			ScaledAxis axis = (ScaledAxis) Arrays.stream(tensor.axes).filter(ax -> ax.getID().equalsIgnoreCase(refID)).findFirst().orElse(null);
+			if (axis == null) {
+				throw new JsonParseException("Cannot find reference axis " + refID);
+			}
+			this.referenceAxis = axis;
+		}
 	}
 
-	public static class FixedSize implements Size {
+	static class FixedSize implements Size {
 		private final int size;
 		FixedSize(int size) {
 			this.size = size;
@@ -1856,9 +2040,24 @@ public class BioimageIoSpec {
 		public int getSize() {
 			return size;
 		}
+
+		@Override
+		public int getTargetSize(int target) {
+			return getSize();
+		}
+
+		@Override
+		public int getStep() {
+			return NO_SIZE;
+		}
+
+		@Override
+		public void validate(List<? extends BaseTensor> tensors) {
+			// can't validate ints
+		}
 	}
 
-	public abstract static class TimeAxisBase extends AxisBase implements ScaledAxis {
+	abstract static class TimeAxisBase extends AxisBase implements ScaledAxis {
 		private final String type = "time";
 		private final TimeUnit unit;
 		private final double scale;
@@ -1870,13 +2069,14 @@ public class BioimageIoSpec {
 		}
 		@Override
 		public AxisType getType() {
-			return AxisType.TIME;
+			return AxisType.T;
 		}
 
 		@Override
 		public double getScale() {
 			return scale;
 		}
+
 	}
 
 	public static class TimeInputAxis extends TimeAxisBase {
@@ -1891,6 +2091,11 @@ public class BioimageIoSpec {
 		public Size getSize() {
 			return size;
 		}
+
+		@Override
+		public void validate(List<? extends BaseTensor> tensors) {
+			getSize().validate(tensors);
+		}
 	}
 
 	public static class TimeOutputAxis extends TimeAxisBase {
@@ -1904,6 +2109,10 @@ public class BioimageIoSpec {
 		@Override
 		public Size getSize() {
 			return size;
+		}
+		@Override
+		public void validate(List<? extends BaseTensor> tensors) {
+			getSize().validate(tensors);
 		}
 	}
 
@@ -1947,7 +2156,7 @@ public class BioimageIoSpec {
 		ZETTASECOND;
 	}
 
-	public static enum SpaceUnit {
+	public enum SpaceUnit {
 		ATTOMETER,
 		ANGSTROM,
 		CENTIMETER,
@@ -2024,6 +2233,10 @@ public class BioimageIoSpec {
 		public Size getSize() {
 			return this.size;
 		}
+		@Override
+		public void validate(List<? extends BaseTensor> tensors) {
+			getSize().validate(tensors);
+		}
 	}
 
 	public static class SpaceOutputAxis extends SpaceAxisBase {
@@ -2038,10 +2251,14 @@ public class BioimageIoSpec {
 		public Size getSize() {
 			return this.size;
 		}
+		@Override
+		public void validate(List<? extends BaseTensor> tensors) {
+			getSize().validate(tensors);
+		}
 	}
 
 	public static class SpaceOutputAxisWithHalo extends SpaceOutputAxis implements WithHalo {
-		private SizeReference size;
+		private ReferencedSize size;
 		private int halo = 0;
 
 		SpaceOutputAxisWithHalo(JsonElement id, JsonElement description, String unit, double scale, Size size, int halo) {
@@ -2060,5 +2277,44 @@ public class BioimageIoSpec {
 	 */
 	public interface WithHalo {
 		int getHalo();
+	}
+
+	/**
+	 * Deal with the awkwardness of -inf and inf instead of .inf and .inf.
+	 * This otherwise caused several failures for data range.
+	 */
+	private static class DoubleArrayDeserializer implements JsonDeserializer<double[]> {
+
+		@Override
+		public double[] deserialize(JsonElement json, Type typeOfT, JsonDeserializationContext context)
+				throws JsonParseException {
+
+			if (json.isJsonNull())
+				return null;
+			if (json.isJsonArray()) {
+				List<Double> values = new ArrayList<>();
+				for (var jsonVal : json.getAsJsonArray()) {
+					if (jsonVal.isJsonNull()) {
+						logger.warn("Found null when expecting a double - will replace with NaN");
+						values.add(Double.NaN);
+						continue;
+					}
+					var jsonPrimitive = jsonVal.getAsJsonPrimitive();
+					if (jsonPrimitive.isNumber()) {
+						values.add(jsonPrimitive.getAsDouble());
+					} else {
+						var s = jsonPrimitive.getAsString();
+						if ("inf".equalsIgnoreCase(s))
+							values.add(Double.POSITIVE_INFINITY);
+						else if ("-inf".equalsIgnoreCase(s))
+							values.add(Double.NEGATIVE_INFINITY);
+						else
+							values.add(Double.parseDouble(s));
+					}
+				}
+				return values.stream().mapToDouble(d -> d).toArray();
+			} else
+				throw new JsonParseException("Can't parse data range from " + json);
+		}
 	}
 }
