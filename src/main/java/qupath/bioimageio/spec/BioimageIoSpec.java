@@ -940,8 +940,7 @@ public class BioimageIoSpec {
 		@SerializedName("data_type")
 		private String dataType;
 		private String name;
-		String id; // todo: some way to match these on input and output...
-
+		String id;
 		private Shape shape;
 
 		@SerializedName("data_range")
@@ -1083,7 +1082,6 @@ public class BioimageIoSpec {
 		}
 
 		private void validate(List<? extends BaseTensor> otherTensors) {
-			// todo: magically resolve axis refs
 		}
 
 		public static class ParameterizedInputShape extends Shape {
@@ -1933,7 +1931,8 @@ public class BioimageIoSpec {
 
 		@Override
 		public void validate(List<? extends BaseTensor> tensors) {
-			// todo: no external deps but should check param validity
+			assert min >= 0;
+			assert step >= 0;
 		}
 	}
 
@@ -1966,7 +1965,8 @@ public class BioimageIoSpec {
 
 		@Override
 		public void validate(List<? extends BaseTensor> tensors) {
-			// nothing to validate
+			assert min > 0;
+			assert max > min;
 		}
 	}
 
@@ -1976,8 +1976,6 @@ public class BioimageIoSpec {
 	 * <code>size = reference.size * reference.scale / axis.scale + offset</code>
 	 */
 	static class ReferencedSize implements Size {
-		// todo: in the python implementation, they store just axis IDs, then search through all tensors for the right axis ID on request
-		// I think we should try to have a handle on them on parsing, rather than throwing a runtime error...?
 		private volatile String thisID;
 		@SerializedName("axis_id")
 		private final String refID;
