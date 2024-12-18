@@ -107,11 +107,6 @@ public class BioimageIoSpec {
 			// Note: we can't support -inf or inf (but can support -.inf or .inf)
 			Yaml yaml = new Yaml(new SafeConstructor(new LoaderOptions()));
 			Map<String, ?> map = yaml.load(stream);
-			String version = map.get("format_version").toString();
-			BioImageIoVersion v = BioImageIoVersion.VERSION_0_4;
-			if (ModuleDescriptor.Version.parse(version).compareTo(ModuleDescriptor.Version.parse("0.5.0")) > 0) {
-				 v = BioImageIoVersion.VERSION_0_5;
-			}
 
 			var builder = new GsonBuilder()
 					.serializeSpecialFloatingPointValues()
