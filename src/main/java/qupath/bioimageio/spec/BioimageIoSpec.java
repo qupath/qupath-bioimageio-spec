@@ -665,7 +665,7 @@ public class BioimageIoSpec {
 		
 		private URI baseURI;
 		private URI uri;
-				
+
 		private List<InputTensor> inputs;
 				
 		@SerializedName("test_inputs")
@@ -940,7 +940,7 @@ public class BioimageIoSpec {
 		@SerializedName("data_type")
 		private String dataType;
 		private String name;
-		String id;
+		private String id;
 		private Shape shape;
 
 		@SerializedName("data_range")
@@ -955,7 +955,11 @@ public class BioimageIoSpec {
 		}
 
 		public String getName() {
-			return name;
+			return name != null ? name : id;
+		}
+
+		public String getId() {
+			return id;
 		}
 
 		public Shape getShape() {
@@ -963,6 +967,7 @@ public class BioimageIoSpec {
 		}
 
 		public double[] getDataRange() {
+			// todo: this will be wrong if the axes hold the ranges...
 			return dataRange == null ? null : dataRange.clone();
 		}
 
@@ -1005,7 +1010,8 @@ public class BioimageIoSpec {
 		public List<Processing> getPostprocessing() {
 			return toUnmodifiableList(postprocessing);
 		}
-		
+
+		// todo: needs to handle halo in axis
 		public int[] getHalo() {
 			return halo == null ? new int[0] : halo.clone();
 		}
@@ -1033,7 +1039,11 @@ public class BioimageIoSpec {
 		public int[] getShape() {
 			return shape == null ? new int[0] : shape.clone();
 		}
-		
+
+		/**
+		 * Get the minimum shape; useful for parameterized shapes.
+		 * @return An int array of minimum shape sizes.
+		 */
 		public int[] getShapeMin() {
 			return getShape();
 		}
@@ -1057,11 +1067,19 @@ public class BioimageIoSpec {
 		public int getLength() {
 			return shape == null ? 0 : shape.length;
 		}
-		
+
+		/**
+		 * Get the shape step (increment), useful for parameterized shapes.
+		 * @return An int array of shape steps.
+		 * */
 		public int[] getShapeStep() {
 			return shape == null ? new int[0] : new int[shape.length];
 		}
-		
+
+		/**
+		 * Get the shape scale, useful for implicit shapes.
+		 * @return A double array of scales.
+		 */
 		public double[] getScale() {
 			if (shape == null)
 				return new double[0];
@@ -1070,6 +1088,10 @@ public class BioimageIoSpec {
 			return scale;
 		}
 
+		/**
+		 * Get the shape scale, useful for implicit shapes.
+		 * @return A double array of offsets.
+		 */
 		public double[] getOffset() {
 			return shape == null ? new double[0] : new double[shape.length];
 		}
@@ -1081,8 +1103,7 @@ public class BioimageIoSpec {
 			return "Shape (" + Arrays.toString(shape) + ")";
 		}
 
-		private void validate(List<? extends BaseTensor> otherTensors) {
-		}
+		private void validate(List<? extends BaseTensor> otherTensors) {}
 
 		public static class ParameterizedInputShape extends Shape {
 			
@@ -1187,10 +1208,6 @@ public class BioimageIoSpec {
 		
 		static class SizesShape extends Shape {
 			private final List<Size> sizes;
-
-			SizesShape(Size... sizes) {
-				this(Arrays.asList(sizes));
-			}
 
 			SizesShape(List<Size> sizes) {
 				this.sizes = sizes;
@@ -1556,13 +1573,12 @@ public class BioimageIoSpec {
 			if (obj.has("min") && obj.has("step")) {
 				return context.deserialize(obj, ParameterizedSize.class);
 			}
-			if (obj.has("min") && obj.has("max")) {
-				return context.deserialize(obj, DataDependentSize.class);
-			}
 			if (obj.has("axis_id") && obj.has("tensor_id")) {
 				return new ReferencedSize(obj.get("axis_id").getAsString(), obj.get("tensor_id").getAsString(), scale, obj.get("offset"));
 			}
+			return context.deserialize(obj, DataDependentSize.class);
 		}
+        logger.error("Unknown JSON element {}", jsonElement);
 		throw new JsonParseException("No idea what type of size this is, sorry!");
 	}
 
@@ -1577,6 +1593,7 @@ public class BioimageIoSpec {
 				}
 				return axes;
 			}
+			// todo: input or output???
 			if (jsonElement.isJsonArray()) {
 				var arr = jsonElement.getAsJsonArray();
 				Axis[] axes = new Axis[arr.size()];
@@ -1617,8 +1634,8 @@ public class BioimageIoSpec {
 						case "space":
 							axes[i] = new SpaceInputAxis(
 									id, desc,
-									oj.get("unit").getAsString().toUpperCase(),
-									oj.get("scale").getAsDouble(),
+									oj.get("unit"),
+									oj.get("scale"),
 									size
 							);
 							break;
@@ -2018,7 +2035,7 @@ public class BioimageIoSpec {
 
 		@Override
 		public void validate(List<? extends BaseTensor> tensors) {
-			var tensor = tensors.stream().filter(t -> t.id.equals(tensorID)).findFirst().orElse(null);
+			var tensor = tensors.stream().filter(t -> t.getId().equals(tensorID)).findFirst().orElse(null);
 			if (tensor == null) {
 				throw new JsonParseException("Cannot find reference tensor " + tensorID);
 			}
@@ -2157,32 +2174,39 @@ public class BioimageIoSpec {
 	}
 
 	public enum SpaceUnit {
-		ATTOMETER,
-		ANGSTROM,
-		CENTIMETER,
-		DECIMETER,
-		EXAMETER,
-		FEMTOMETER,
-		FOOT,
-		GIGAMETER,
-		HECTOMETER,
-		INCH,
-		KILOMETER,
-		MEGAMETER,
-		METER,
-		MICROMETER,
-		MILE,
-		MILLIMETER,
-		NANOMETER,
-		PARSEC,
-		PETAMETER,
-		PICOMETER,
-		TERAMETER,
-		YARD,
-		YOCTOMETER,
-		YOTTAMETER,
-		ZEPTOMETER,
-		ZETTAMETER
+		ATTOMETER("attometer"),
+		ANGSTROM("angstrom"),
+		CENTIMETER("centimeter"),
+		DECIMETER("decimeter"),
+		EXAMETER("exameter"),
+		FEMTOMETER("femtometer"),
+		FOOT("foot"),
+		GIGAMETER("gigameter"),
+		HECTOMETER("hectometer"),
+		INCH("inch"),
+		KILOMETER("kilometer"),
+		MEGAMETER("megameter"),
+		METER("meter"),
+		MICROMETER("micrometer"),
+		MILE("mile"),
+		MILLIMETER("millimeter"),
+		NANOMETER("nanometer"),
+		PARSEC("parsec"),
+		PETAMETER("petameter"),
+		PICOMETER("picometer"),
+		TERAMETER("terameter"),
+		YARD("yard"),
+		YOCTOMETER("yoctometer"),
+		YOTTAMETER("yottameter"),
+		ZEPTOMETER("zeptometer"),
+		ZETTAMETER("zettameter"),
+		NO_UNIT("");
+
+		private final String unit;
+
+		SpaceUnit(String s) {
+			this.unit = s;
+		}
 	}
 
 	public enum BioImageIoVersion {
@@ -2225,8 +2249,12 @@ public class BioimageIoSpec {
 		private final boolean concatenable = false;
 
 		SpaceInputAxis(JsonElement id, JsonElement description, String unit, double scale, Size size) {
-			super(id, description, unit, scale);
+			super(id, description, unit.isEmpty() ? "NO_UNIT" : unit, scale);
 			this.size = size;
+		}
+
+		SpaceInputAxis(JsonElement id, JsonElement description, JsonElement unit, JsonElement scale, Size size) {
+			this(id, description, unit != null ? unit.getAsString() : "", scale != null ? scale.getAsDouble(): 1, size);
 		}
 
 		@Override
