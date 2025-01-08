@@ -992,7 +992,7 @@ public class BioimageIoSpec {
 
 	static class NominalOrOrdinalDataDescription implements TensorDataDescription {
 		private final NominalOrOrdinalDType type;
-		private final List<? extends JsonElement> values; // can be int, float, bool, str
+		private final List<? extends JsonElement> values; // todo: can be int, float, bool, str
 
         NominalOrOrdinalDataDescription(NominalOrOrdinalDType type, List<? extends JsonElement> values) {
             this.type = type;
@@ -1834,6 +1834,7 @@ public class BioimageIoSpec {
 			this.description = description;
 		}
 
+		// todo: no json in bioimage objects
 		AxisBase(JsonElement id, JsonElement description) {
 			this(id == null ? "": id.getAsString().toLowerCase(), description == null ? "": description.getAsString());
 		}
@@ -1847,6 +1848,7 @@ public class BioimageIoSpec {
 	static class BatchAxis extends AxisBase {
 		private final int size;
 		private final boolean concatenable = true;
+		// todo: no json in bioimage objects
 		BatchAxis(JsonElement id, JsonElement description, JsonElement size) {
 			super(id, description);
 			int s = 1;
@@ -1875,6 +1877,7 @@ public class BioimageIoSpec {
 	static class ChannelAxis extends AxisBase implements ScaledAxis {
 		private final List<String> channel_names;
 
+		// todo: no json in bioimage objects
 		ChannelAxis(JsonElement id, JsonElement description, List<String> channel_names) {
 			super(id, description);
 			this.channel_names = List.copyOf(channel_names);
@@ -1905,6 +1908,7 @@ public class BioimageIoSpec {
 		private final double scale = 1.0;
 		private final String unit = null;
 
+		// todo: no json in bioimage objects
 		IndexAxisBase(JsonElement id, JsonElement description) {
 			super(id, description);
 		}
@@ -1929,6 +1933,7 @@ public class BioimageIoSpec {
 		private final Size size;
 		private final boolean concatenable = false;
 
+		// todo: no json in bioimage objects
 		IndexInputAxis(JsonElement id, JsonElement description, Size size) {
 			super(id, description);
 			this.size = size;
@@ -1947,6 +1952,7 @@ public class BioimageIoSpec {
 	static class IndexOutputAxis extends IndexAxisBase {
 		private Size size;
 
+		// todo: no json in bioimage objects
 		IndexOutputAxis(JsonElement id, JsonElement description) {
 			super(id, description);
 		}
@@ -2101,6 +2107,7 @@ public class BioimageIoSpec {
 			this.offset = offset;
 		}
 
+		// todo: no json in bioimage objects
 		ReferencedSize(String refID, String tensorID, JsonElement scale, JsonElement offset) {
 			this(refID, tensorID, (scale != null) ? scale.getAsDouble() : 1.0, (offset != null) ? offset.getAsInt() : 0);
 		}
@@ -2166,6 +2173,7 @@ public class BioimageIoSpec {
 		private final TimeUnit unit;
 		private final double scale;
 
+		// todo: no json in bioimage objects
 		TimeAxisBase(JsonElement id, JsonElement description, TimeUnit unit, double scale) {
 			super(id, description);
 			this.unit = unit;
@@ -2186,6 +2194,7 @@ public class BioimageIoSpec {
 	public static class TimeInputAxis extends TimeAxisBase {
 		private final Size size;
 
+		// todo: no json in bioimage objects
 		TimeInputAxis(JsonElement id, JsonElement description, TimeUnit unit, double scale, Size size) {
 			super(id, description, unit, scale);
 			this.size = size;
@@ -2205,6 +2214,7 @@ public class BioimageIoSpec {
 	public static class TimeOutputAxis extends TimeAxisBase {
 		private final Size size;
 
+		// todo: no json in bioimage objects
 		TimeOutputAxis(JsonElement id, JsonElement description, TimeUnit unit, double scale, Size size) {
 			super(id, description, unit, scale);
 			this.size = size;
@@ -2223,6 +2233,7 @@ public class BioimageIoSpec {
 	public static class TimeOutputAxisWithHalo extends TimeOutputAxis implements WithHalo {
 		private final int halo;
 
+		// todo: no json in bioimage objects
 		TimeOutputAxisWithHalo(JsonElement id, JsonElement description, TimeUnit unit, double scale, Size size, int halo) {
 			super(id, description, unit, scale, size);
 			this.halo = halo;
@@ -2310,10 +2321,12 @@ public class BioimageIoSpec {
 		private final SpaceUnit unit;
 		private double scale = 1.0;
 
+		// todo: no json in bioimage objects
 		SpaceAxisBase(JsonElement id, JsonElement description, String unit, double scale) {
 			this(id, description, SpaceUnit.valueOf(unit.toUpperCase()), scale);
 		}
 
+		// todo: no json in bioimage objects
 		SpaceAxisBase(JsonElement id, JsonElement description, SpaceUnit unit, double scale) {
 			super(id, description);
 			this.unit = unit;
@@ -2335,11 +2348,13 @@ public class BioimageIoSpec {
 		private final Size size;
 		private final boolean concatenable = false;
 
+		// todo: no json in bioimage objects
 		SpaceInputAxis(JsonElement id, JsonElement description, String unit, double scale, Size size) {
 			super(id, description, unit.isEmpty() ? "NO_UNIT" : unit, scale);
 			this.size = size;
 		}
 
+		// todo: no json in bioimage objects
 		SpaceInputAxis(JsonElement id, JsonElement description, JsonElement unit, JsonElement scale, Size size) {
 			this(id, description, unit != null ? unit.getAsString() : "", scale != null ? scale.getAsDouble(): 1, size);
 		}
@@ -2357,6 +2372,7 @@ public class BioimageIoSpec {
 	public static class SpaceOutputAxis extends SpaceAxisBase {
 		private final Size size;
 
+		// todo: no json in bioimage objects
 		SpaceOutputAxis(JsonElement id, JsonElement description, String unit, double scale, Size size) {
 			super(id, description, unit, scale);
 			this.size = size;
@@ -2375,7 +2391,7 @@ public class BioimageIoSpec {
 	static class SpaceOutputAxisWithHalo extends SpaceOutputAxis implements WithHalo {
 		private ReferencedSize size;
 		private int halo = 0;
-
+		// todo: no json in bioimage objects
 		SpaceOutputAxisWithHalo(JsonElement id, JsonElement description, String unit, double scale, Size size, int halo) {
 			super(id, description, unit, scale, size);
 			this.halo = halo;
