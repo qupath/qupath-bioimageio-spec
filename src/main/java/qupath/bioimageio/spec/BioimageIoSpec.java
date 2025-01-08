@@ -1659,7 +1659,9 @@ public class BioimageIoSpec {
 			if (obj.has("axis_id") && obj.has("tensor_id")) {
 				return new ReferencedSize(obj.get("axis_id").getAsString(), obj.get("tensor_id").getAsString(), scale, obj.get("offset"));
 			}
-			return context.deserialize(obj, DataDependentSize.class);
+			var min = obj.get("min");
+			var max = obj.get("max");
+			return new DataDependentSize(min != null ? min.getAsInt() : 1, max != null ? max.getAsInt() : Integer.MAX_VALUE);
 		}
         logger.error("Unknown JSON element {}", jsonElement);
 		throw new JsonParseException("No idea what type of size this is, sorry!");
@@ -2065,6 +2067,8 @@ public class BioimageIoSpec {
 
 		@Override
 		public void validate(List<? extends BaseTensor> tensors) {
+			System.out.println(max);
+			System.out.println(min);
 			assert min > 0;
 			assert max >= min;
 		}
