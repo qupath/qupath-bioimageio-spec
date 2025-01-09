@@ -546,7 +546,7 @@ class Deserializers {
                             axes[i] = new BioimageIoSpec.SpaceInputAxis(
                                     id, desc,
                                     deserializeField(context, oj, "unit", String.class, ""),
-                                    deserializeField(context, oj, "scale", Double.class, 1),
+                                    deserializeField(context, oj, "scale", Double.class, 1.0),
                                     size
                             );
                             break;

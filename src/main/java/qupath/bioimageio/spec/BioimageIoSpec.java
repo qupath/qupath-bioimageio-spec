@@ -1519,8 +1519,6 @@ public class BioimageIoSpec {
 
 		@Override
 		public void validate(List<? extends BioimageIoSpec.BaseTensor> tensors) {
-			System.out.println(max);
-			System.out.println(min);
 			assert min > 0;
 			assert max >= min;
 		}
