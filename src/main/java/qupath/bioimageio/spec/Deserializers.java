@@ -6,6 +6,7 @@ import com.google.gson.JsonDeserializer;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
+import com.google.gson.JsonPrimitive;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -256,10 +257,25 @@ class Deserializers {
             if (jsonElement.isJsonObject()) {
                 JsonObject jsonObject = jsonElement.getAsJsonObject();
                 if (jsonObject.get("values") != null) {
-                    JsonArray vals = jsonObject.get("values").getAsJsonArray(); // todo: parse to values...
+                    JsonArray vals = jsonObject.get("values").getAsJsonArray();
+                    List<Object> values = new ArrayList<>();
+                    for (var val : vals) {
+                        if (val instanceof JsonPrimitive) {
+                            var prim = val.getAsJsonPrimitive();
+                            if (prim.isNumber()) {
+                                values.add(prim.getAsNumber());
+                            }
+                            if (prim.isBoolean()) {
+                                values.add(prim.getAsBoolean());
+                            }
+                            if (prim.isString()) {
+                                values.add(prim.getAsString());
+                            }
+                        }
+                    }
                     return new BioimageIoSpec.NominalOrOrdinalDataDescription(
                             BioimageIoSpec.NominalOrOrdinalDType.valueOf(jsonObject.get("type").getAsString().toUpperCase()),
-                            vals.asList()
+                            values
                     );
                 }
                 var t = jsonObject.get("type");

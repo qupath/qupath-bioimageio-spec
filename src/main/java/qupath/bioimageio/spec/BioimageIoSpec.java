@@ -483,6 +483,11 @@ public class BioimageIoSpec {
 		private String name;
 		private String id;
 		private Shape shape;
+
+		public TensorDataDescription getDataDescription() {
+			return data;
+		}
+
 		private TensorDataDescription data;
 
 		@SerializedName("data_range")
@@ -556,7 +561,7 @@ public class BioimageIoSpec {
 	}
 
 
-	interface TensorDataDescription {
+	public interface TensorDataDescription {
 
 	}
 
@@ -565,22 +570,28 @@ public class BioimageIoSpec {
 	 */
 	public static class NominalOrOrdinalDataDescription implements TensorDataDescription {
 		private final NominalOrOrdinalDType type;
+		private final List<?> values;
 
-		public List<? extends JsonElement> getValues() {
+		/**
+		 * Get the possible values for the described tensor to which numeric dtype values relate to.
+		 * @return A list, where elements can be int, float, bool, String.
+		 */
+		public List<?> getValues() {
 			return values;
 		}
 
+		/**
+		 * The data type of the underlying tensor.
+		 * @return An enum describing the type.
+		 */
 		public NominalOrOrdinalDType getType() {
 			return type;
 		}
 
-		private final List<? extends JsonElement> values; // todo: can be int, float, bool, str
-
-        NominalOrOrdinalDataDescription(NominalOrOrdinalDType type, List<? extends JsonElement> values) {
+        NominalOrOrdinalDataDescription(NominalOrOrdinalDType type, List<?> values) {
             this.type = type;
             this.values = values;
         }
-
     }
 	
 
