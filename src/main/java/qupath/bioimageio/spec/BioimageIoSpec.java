@@ -1,16 +1,8 @@
 package qupath.bioimageio.spec;
 
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
 import java.lang.module.ModuleDescriptor;
-import java.lang.reflect.Type;
 import java.net.URI;
-import java.nio.file.FileSystems;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -18,19 +10,13 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
-import java.util.stream.Stream;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.yaml.snakeyaml.LoaderOptions;
-import org.yaml.snakeyaml.Yaml;
-import org.yaml.snakeyaml.constructor.SafeConstructor;
 
-import com.google.gson.GsonBuilder;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonParseException;
 import com.google.gson.annotations.SerializedName;
-import com.google.gson.reflect.TypeToken;
 
 /**
  * Parse the model spec at <a href="https://github.com/bioimage-io/spec-bioimage-io">https://github.com/bioimage-io/spec-bioimage-io</a> in Java.
@@ -242,8 +228,8 @@ public class BioimageIoSpec {
 	 */
 	public static class BioimageIoModel extends BioimageIoResource {
 		
-		private URI baseURI;
-		private URI uri;
+		URI baseURI;
+		URI uri;
 
 		List<InputTensor> inputs;
 				
@@ -1222,7 +1208,7 @@ public class BioimageIoSpec {
 		 * Ensure the parameters of the axis are valid.
 		 * @param tensors Other tensors in the model, in case they are referenced in this axis.
 		 */
-		void validate(List<? extends BaseTensor> tensors);
+		void validate(List<? extends BioimageIoSpec.BaseTensor> tensors);
 	}
 
 	/**
@@ -1295,7 +1281,7 @@ public class BioimageIoSpec {
 		 */
 		int getStep();
 
-		void validate(List<? extends BaseTensor> tensors);
+		void validate(List<? extends BioimageIoSpec.BaseTensor> tensors);
 	}
 
 	/**
@@ -1338,9 +1324,9 @@ public class BioimageIoSpec {
 		}
 
 		@Override
-		public void validate(List<? extends BaseTensor> tensors) {
+		public void validate(List<? extends BioimageIoSpec.BaseTensor> tensors) {
 			// can't validate char axes, these are validated at tensor level
-        }
+		}
 	}
 
 	abstract static class AxisBase implements Axis {
@@ -1377,11 +1363,11 @@ public class BioimageIoSpec {
 		}
 
 		@Override
-		public void validate(List<? extends BaseTensor> tensors) {
+		public void validate(List<? extends BioimageIoSpec.BaseTensor> tensors) {
 			// fixed size doesn't need validation
-        }
+		}
 	}
-	
+
 	static class ChannelAxis extends AxisBase implements ScaledAxis {
 		private final List<String> channel_names;
 
@@ -1396,7 +1382,7 @@ public class BioimageIoSpec {
 		}
 
 		@Override
-		public void validate(List<? extends BaseTensor> tensors) {
+		public void validate(List<? extends BioimageIoSpec.BaseTensor> tensors) {
 			// fixed size based on list of channels
 		}
 
@@ -1449,7 +1435,7 @@ public class BioimageIoSpec {
 		}
 
 		@Override
-		public void validate(List<? extends BaseTensor> tensors) {
+		public void validate(List<? extends BioimageIoSpec.BaseTensor> tensors) {
 			size.validate(tensors);
 		}
 	}
@@ -1462,7 +1448,7 @@ public class BioimageIoSpec {
 		}
 
 		@Override
-		public void validate(List<? extends BaseTensor> tensors) {
+		public void validate(List<? extends BioimageIoSpec.BaseTensor> tensors) {
 			size.validate(tensors);
 		}
 	}
@@ -1479,7 +1465,7 @@ public class BioimageIoSpec {
 			this.min = min;
 			this.step = step;
 		}
-		
+
 		@Override
 		public int getSize() {
 			return getTargetSize(1);
@@ -1498,7 +1484,7 @@ public class BioimageIoSpec {
 		}
 
 		@Override
-		public void validate(List<? extends BaseTensor> tensors) {
+		public void validate(List<? extends BioimageIoSpec.BaseTensor> tensors) {
 			assert min >= 0;
 			assert step >= 0;
 		}
@@ -1532,7 +1518,7 @@ public class BioimageIoSpec {
 		}
 
 		@Override
-		public void validate(List<? extends BaseTensor> tensors) {
+		public void validate(List<? extends BioimageIoSpec.BaseTensor> tensors) {
 			System.out.println(max);
 			System.out.println(min);
 			assert min > 0;
@@ -1583,7 +1569,7 @@ public class BioimageIoSpec {
 		}
 
 		@Override
-		public void validate(List<? extends BaseTensor> tensors) {
+		public void validate(List<? extends BioimageIoSpec.BaseTensor> tensors) {
 			var tensor = tensors.stream().filter(t -> t.getId().equals(tensorID)).findFirst().orElse(null);
 			if (tensor == null) {
 				throw new JsonParseException("Cannot find reference tensor " + tensorID);
@@ -1618,7 +1604,7 @@ public class BioimageIoSpec {
 		}
 
 		@Override
-		public void validate(List<? extends BaseTensor> tensors) {
+		public void validate(List<? extends BioimageIoSpec.BaseTensor> tensors) {
 			// can't validate ints
 		}
 	}
@@ -1662,7 +1648,7 @@ public class BioimageIoSpec {
 		}
 
 		@Override
-		public void validate(List<? extends BaseTensor> tensors) {
+		public void validate(List<? extends BioimageIoSpec.BaseTensor> tensors) {
 			getSize().validate(tensors);
 		}
 	}
@@ -1681,7 +1667,7 @@ public class BioimageIoSpec {
 		}
 
 		@Override
-		public void validate(List<? extends BaseTensor> tensors) {
+		public void validate(List<? extends BioimageIoSpec.BaseTensor> tensors) {
 			getSize().validate(tensors);
 		}
 	}
@@ -1786,10 +1772,10 @@ public class BioimageIoSpec {
 			return this.scale;
 		}
 
-        public SpaceUnit getUnit() {
-            return unit;
-        }
-    }
+		public SpaceUnit getUnit() {
+			return unit;
+		}
+	}
 
 	static class SpaceInputAxis extends SpaceAxisBase {
 		private final Size size;
@@ -1805,7 +1791,7 @@ public class BioimageIoSpec {
 			return this.size;
 		}
 		@Override
-		public void validate(List<? extends BaseTensor> tensors) {
+		public void validate(List<? extends BioimageIoSpec.BaseTensor> tensors) {
 			getSize().validate(tensors);
 		}
 	}
@@ -1824,7 +1810,7 @@ public class BioimageIoSpec {
 		}
 
 		@Override
-		public void validate(List<? extends BaseTensor> tensors) {
+		public void validate(List<? extends BioimageIoSpec.BaseTensor> tensors) {
 			getSize().validate(tensors);
 		}
 	}
@@ -1839,7 +1825,7 @@ public class BioimageIoSpec {
 		}
 
 		@Override
-        public int getHalo() {
+		public int getHalo() {
 			return this.halo;
 		}
 	}

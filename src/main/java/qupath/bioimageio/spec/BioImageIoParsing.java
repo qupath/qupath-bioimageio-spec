@@ -6,6 +6,7 @@ import org.yaml.snakeyaml.LoaderOptions;
 import org.yaml.snakeyaml.Yaml;
 import org.yaml.snakeyaml.constructor.SafeConstructor;
 
+
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
@@ -89,6 +90,7 @@ public class BioImageIoParsing {
                     .setDateFormat("yyyy-MM-dd'T'HH:mm:ss");
 
 
+
             var gson = builder.create();
 
             var json = gson.toJson(map);
@@ -126,7 +128,7 @@ public class BioImageIoParsing {
         if (Files.isDirectory(path)) {
             // Check directory
             try (Stream<Path> pathStream = Files.list(path)) {
-                List<Path> yamlFiles = pathStream.filter(isYamlPath).collect(Collectors.toList());
+                List<Path> yamlFiles = pathStream.filter(BioImageIoParsing::isYamlPath).collect(Collectors.toList());
                 if (yamlFiles.isEmpty())
                     return null;
                 if (yamlFiles.size() == 1)
