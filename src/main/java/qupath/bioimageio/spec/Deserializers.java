@@ -21,7 +21,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import static qupath.bioimageio.spec.BioImageIoParsing.parameterizedListType;
+import static qupath.bioimageio.spec.BioimageIoParsing.parameterizedListType;
 
 class Deserializers {
     private Deserializers() {

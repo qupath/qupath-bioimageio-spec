@@ -20,7 +20,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-public class BioImageIoParsing {
+public class BioimageIoParsing {
     /**
      * Parse a model from a file or directory.
      * This can either be a yaml file, or a directory that contains a yaml file representing the model.
@@ -128,7 +128,7 @@ public class BioImageIoParsing {
         if (Files.isDirectory(path)) {
             // Check directory
             try (Stream<Path> pathStream = Files.list(path)) {
-                List<Path> yamlFiles = pathStream.filter(BioImageIoParsing::isYamlPath).collect(Collectors.toList());
+                List<Path> yamlFiles = pathStream.filter(BioimageIoParsing::isYamlPath).collect(Collectors.toList());
                 if (yamlFiles.isEmpty())
                     return null;
                 if (yamlFiles.size() == 1)

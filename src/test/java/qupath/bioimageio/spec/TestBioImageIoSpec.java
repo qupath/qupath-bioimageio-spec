@@ -1,7 +1,7 @@
 package qupath.bioimageio.spec;
 import static org.junit.jupiter.api.Assertions.*;
-import static qupath.bioimageio.spec.BioImageIoParsing.findModelRdf;
-import static qupath.bioimageio.spec.BioImageIoParsing.isYamlPath;
+import static qupath.bioimageio.spec.BioimageIoParsing.findModelRdf;
+import static qupath.bioimageio.spec.BioimageIoParsing.isYamlPath;
 
 import java.io.IOException;
 import java.net.URISyntaxException;
@@ -75,7 +75,7 @@ class TestBioImageIoSpec {
 	void testParseSpec(Path path) {
 		try {
 			logger.info("Attempting to parse {}", path);
-			var model = BioImageIoParsing.parseModel(path);
+			var model = BioimageIoParsing.parseModel(path);
 			assertNotNull(model);
 			if (Files.isDirectory(path))
 				assertEquals(path.toUri(), model.getBaseURI());
