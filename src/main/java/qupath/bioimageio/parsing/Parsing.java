@@ -1,10 +1,25 @@
-package qupath.bioimageio.spec;
+package qupath.bioimageio.parsing;
 
 import com.google.gson.GsonBuilder;
+import com.google.gson.JsonDeserializationContext;
+import com.google.gson.JsonDeserializer;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonParseException;
 import com.google.gson.reflect.TypeToken;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.yaml.snakeyaml.LoaderOptions;
 import org.yaml.snakeyaml.Yaml;
 import org.yaml.snakeyaml.constructor.SafeConstructor;
+import qupath.bioimageio.spec.tmp.Author;
+import qupath.bioimageio.spec.tmp.Dataset;
+import qupath.bioimageio.spec.tmp.Model;
+import qupath.bioimageio.spec.tmp.Processing;
+import qupath.bioimageio.spec.tmp.Resource;
+import qupath.bioimageio.spec.tmp.Shape;
+import qupath.bioimageio.spec.tmp.Weights;
+import qupath.bioimageio.spec.tmp.axes.Axis;
+import qupath.bioimageio.spec.tmp.tensor.TensorDataDescription;
 
 
 import java.io.File;
@@ -14,13 +29,14 @@ import java.lang.reflect.Type;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-public class BioimageIoParsing {
+public class Parsing {
     /**
      * Parse a model from a file or directory.
      * This can either be a yaml file, or a directory that contains a yaml file representing the model.
@@ -28,7 +44,7 @@ public class BioimageIoParsing {
      * @return The parsed model.
      * @throws IOException if the model cannot be found or parsed
      */
-    public static BioimageIoSpec.BioimageIoModel parseModel(File file) throws IOException {
+    public static Model parseModel(File file) throws IOException {
         return parseModel(file.toPath());
     }
 
@@ -39,7 +55,7 @@ public class BioimageIoParsing {
      * @return The parsed model.
      * @throws IOException if the model cannot be found or parsed
      */
-    public static BioimageIoSpec.BioimageIoModel parseModel(Path path) throws IOException {
+    public static Model parseModel(Path path) throws IOException {
 
         var pathYaml = findModelRdf(path);
         if (pathYaml == null) {
@@ -64,7 +80,7 @@ public class BioimageIoParsing {
      * @return The parsed model.
      * @throws IOException if the model cannot be found or parsed
      */
-    public static BioimageIoSpec.BioimageIoModel parseModel(InputStream stream) throws IOException {
+    public static Model parseModel(InputStream stream) throws IOException {
 
         try {
             // Important to use SafeConstructor to restrict potential classes that might be initiated
@@ -75,18 +91,18 @@ public class BioimageIoParsing {
             var builder = new GsonBuilder()
                     .serializeSpecialFloatingPointValues()
                     .setPrettyPrinting()
-                    .registerTypeAdapter(BioimageIoSpec.BioimageIoModel.class, new Deserializers.ModelDeserializer())
-                    .registerTypeAdapter(BioimageIoSpec.BioimageIoResource.class, new Deserializers.ResourceDeserializer())
-                    .registerTypeAdapter(BioimageIoSpec.BioimageIoDataset.class, new Deserializers.DatasetDeserializer())
-                    .registerTypeAdapter(double[].class, new Deserializers.DoubleArrayDeserializer())
-                    .registerTypeAdapter(BioimageIoSpec.Author.class, new Deserializers.AuthorDeserializer())
-                    .registerTypeAdapter(BioimageIoSpec.WeightsEntry.class, new Deserializers.WeightsEntryDeserializer())
-                    .registerTypeAdapter(BioimageIoSpec.WeightsMap.class, new Deserializers.WeightsMapDeserializer())
-                    .registerTypeAdapter(BioimageIoSpec.Shape.class, new Deserializers.ShapeDeserializer())
-                    .registerTypeAdapter(BioimageIoSpec.Processing.class, new Deserializers.ProcessingDeserializer())
-                    .registerTypeAdapter(BioimageIoSpec.Axis[].class, new Deserializers.AxesDeserializer())
-                    .registerTypeAdapter(BioimageIoSpec.Processing.ProcessingMode.class, new Deserializers.ProcessingModeDeserializer())
-                    .registerTypeAdapter(BioimageIoSpec.TensorDataDescription.class, new Deserializers.TensorDataDescriptionDeserializer())
+                    .registerTypeAdapter(Model.class, new Model.Deserializer())
+                    .registerTypeAdapter(Resource.class, new Deserializers.ResourceDeserializer())
+                    .registerTypeAdapter(Dataset.class, new Deserializers.DatasetDeserializer())
+                    .registerTypeAdapter(double[].class, new DoubleArrayDeserializer())
+                    .registerTypeAdapter(Author.class, new Deserializers.AuthorDeserializer())
+                    .registerTypeAdapter(Weights.WeightsEntry.class, new Deserializers.WeightsEntryDeserializer())
+                    .registerTypeAdapter(Weights.WeightsMap.class, new Deserializers.WeightsMapDeserializer())
+                    .registerTypeAdapter(Shape.class, new Shape.Deserializer())
+                    .registerTypeAdapter(Processing.class, new Deserializers.ProcessingDeserializer())
+                    .registerTypeAdapter(Axis[].class, new Deserializers.AxesDeserializer())
+                    .registerTypeAdapter(Processing.ProcessingMode.class, new Deserializers.ProcessingModeDeserializer())
+                    .registerTypeAdapter(TensorDataDescription.class, new Deserializers.TensorDataDescriptionDeserializer())
                     .setDateFormat("yyyy-MM-dd'T'HH:mm:ss");
 
 
@@ -95,7 +111,7 @@ public class BioimageIoParsing {
 
             var json = gson.toJson(map);
 
-            return gson.fromJson(json, BioimageIoSpec.BioimageIoModel.class);
+            return gson.fromJson(json, Model.class);
         } catch (Exception e) {
             throw new IOException(e);
         }
@@ -128,7 +144,7 @@ public class BioimageIoParsing {
         if (Files.isDirectory(path)) {
             // Check directory
             try (Stream<Path> pathStream = Files.list(path)) {
-                List<Path> yamlFiles = pathStream.filter(BioimageIoParsing::isYamlPath).collect(Collectors.toList());
+                List<Path> yamlFiles = pathStream.filter(Parsing::isYamlPath).collect(Collectors.toList());
                 if (yamlFiles.isEmpty())
                     return null;
                 if (yamlFiles.size() == 1)
@@ -167,8 +183,47 @@ public class BioimageIoParsing {
 
 
 
-    static Type parameterizedListType(Type typeOfList) {
+    public static Type parameterizedListType(Type typeOfList) {
         return TypeToken.getParameterized(List.class, typeOfList).getType();
+    }
+    /**
+     * Deal with the awkwardness of -inf and inf instead of .inf and .inf.
+     * This otherwise caused several failures for data range.
+     */
+    static class DoubleArrayDeserializer implements JsonDeserializer<double[]> {
+        Logger logger = LoggerFactory.getLogger(DoubleArrayDeserializer.class);
+
+        @Override
+        public double[] deserialize(JsonElement json, Type typeOfT, JsonDeserializationContext context)
+                throws JsonParseException {
+
+            if (json.isJsonNull())
+                return null;
+            if (json.isJsonArray()) {
+                List<Double> values = new ArrayList<>();
+                for (var jsonVal : json.getAsJsonArray()) {
+                    if (jsonVal.isJsonNull()) {
+                        logger.warn("Found null when expecting a double - will replace with NaN");
+                        values.add(Double.NaN);
+                        continue;
+                    }
+                    var jsonPrimitive = jsonVal.getAsJsonPrimitive();
+                    if (jsonPrimitive.isNumber()) {
+                        values.add(jsonPrimitive.getAsDouble());
+                    } else {
+                        var s = jsonPrimitive.getAsString();
+                        if ("inf".equalsIgnoreCase(s))
+                            values.add(Double.POSITIVE_INFINITY);
+                        else if ("-inf".equalsIgnoreCase(s))
+                            values.add(Double.NEGATIVE_INFINITY);
+                        else
+                            values.add(Double.parseDouble(s));
+                    }
+                }
+                return values.stream().mapToDouble(d -> d).toArray();
+            } else
+                throw new JsonParseException("Can't parse data range from " + json);
+        }
     }
 
 }

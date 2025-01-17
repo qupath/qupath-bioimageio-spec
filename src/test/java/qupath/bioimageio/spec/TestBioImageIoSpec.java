@@ -1,7 +1,7 @@
 package qupath.bioimageio.spec;
 import static org.junit.jupiter.api.Assertions.*;
-import static qupath.bioimageio.spec.BioimageIoParsing.findModelRdf;
-import static qupath.bioimageio.spec.BioimageIoParsing.isYamlPath;
+import static qupath.bioimageio.parsing.Parsing.findModelRdf;
+import static qupath.bioimageio.parsing.Parsing.isYamlPath;
 
 import java.io.IOException;
 import java.net.URISyntaxException;
@@ -18,6 +18,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import qupath.bioimageio.parsing.Parsing;
 
 /**
  * Test parsing the spec.
@@ -75,7 +76,7 @@ class TestBioImageIoSpec {
 	void testParseSpec(Path path) {
 		try {
 			logger.info("Attempting to parse {}", path);
-			var model = BioimageIoParsing.parseModel(path);
+			var model = Parsing.parseModel(path);
 			assertNotNull(model);
 			if (Files.isDirectory(path))
 				assertEquals(path.toUri(), model.getBaseURI());
@@ -90,8 +91,8 @@ class TestBioImageIoSpec {
 	 */
 	@Test
 	void testCreateShape() {
-		assertArrayEquals(new int[]{1, 512, 256, 1}, BioimageIoSpec.createShapeArray("byxc", Map.of('x', 256, 'y', 512), 1));
-		assertArrayEquals(new int[]{256, 512, -1}, BioimageIoSpec.createShapeArray("xyc", Map.of('x', 256, 'y', 512), -1));
-		assertArrayEquals(new int[]{3, 4, 5, 6}, BioimageIoSpec.createShapeArray("xyct", Map.of('x', 3, 'y', 4, 'c', 5, 't', 6), -1));
+		assertArrayEquals(new int[]{1, 512, 256, 1}, Utils.createShapeArray("byxc", Map.of('x', 256, 'y', 512), 1));
+		assertArrayEquals(new int[]{256, 512, -1}, Utils.createShapeArray("xyc", Map.of('x', 256, 'y', 512), -1));
+		assertArrayEquals(new int[]{3, 4, 5, 6}, Utils.createShapeArray("xyct", Map.of('x', 3, 'y', 4, 'c', 5, 't', 6), -1));
 	}
 }
