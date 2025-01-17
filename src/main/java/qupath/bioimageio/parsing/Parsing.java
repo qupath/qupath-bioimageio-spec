@@ -11,15 +11,15 @@ import org.slf4j.LoggerFactory;
 import org.yaml.snakeyaml.LoaderOptions;
 import org.yaml.snakeyaml.Yaml;
 import org.yaml.snakeyaml.constructor.SafeConstructor;
-import qupath.bioimageio.spec.tmp.Author;
-import qupath.bioimageio.spec.tmp.Dataset;
-import qupath.bioimageio.spec.tmp.Model;
-import qupath.bioimageio.spec.tmp.Processing;
-import qupath.bioimageio.spec.tmp.Resource;
-import qupath.bioimageio.spec.tmp.Shape;
-import qupath.bioimageio.spec.tmp.Weights;
-import qupath.bioimageio.spec.tmp.axes.Axis;
-import qupath.bioimageio.spec.tmp.tensor.TensorDataDescription;
+import qupath.bioimageio.spec.Author;
+import qupath.bioimageio.spec.Dataset;
+import qupath.bioimageio.spec.Model;
+import qupath.bioimageio.spec.Processing;
+import qupath.bioimageio.spec.Resource;
+import qupath.bioimageio.spec.Shape;
+import qupath.bioimageio.spec.Weights;
+import qupath.bioimageio.spec.axes.Axis;
+import qupath.bioimageio.spec.tensor.TensorDataDescription;
 
 
 import java.io.File;
@@ -65,8 +65,8 @@ public class Parsing {
         try (var stream = Files.newInputStream(pathYaml)) {
             var model = parseModel(stream);
             if (model != null) {
-                model.baseURI = pathYaml.getParent().toUri();
-                model.uri = pathYaml.toUri();
+                model.setBaseURI(pathYaml.getParent().toUri());
+                model.setUri(pathYaml.toUri());
             }
             return model;
         }
@@ -92,17 +92,17 @@ public class Parsing {
                     .serializeSpecialFloatingPointValues()
                     .setPrettyPrinting()
                     .registerTypeAdapter(Model.class, new Model.Deserializer())
-                    .registerTypeAdapter(Resource.class, new Deserializers.ResourceDeserializer())
-                    .registerTypeAdapter(Dataset.class, new Deserializers.DatasetDeserializer())
+                    .registerTypeAdapter(Resource.class, new Resource.Deserializer())
+                    .registerTypeAdapter(Dataset.class, new Dataset.Deserializer())
                     .registerTypeAdapter(double[].class, new DoubleArrayDeserializer())
-                    .registerTypeAdapter(Author.class, new Deserializers.AuthorDeserializer())
-                    .registerTypeAdapter(Weights.WeightsEntry.class, new Deserializers.WeightsEntryDeserializer())
-                    .registerTypeAdapter(Weights.WeightsMap.class, new Deserializers.WeightsMapDeserializer())
+                    .registerTypeAdapter(Author.class, new Author.Deserializer())
+                    .registerTypeAdapter(Weights.WeightsEntry.class, new Weights.WeightsEntryDeserializer())
+                    .registerTypeAdapter(Weights.WeightsMap.class, new Weights.WeightsMapDeserializer())
                     .registerTypeAdapter(Shape.class, new Shape.Deserializer())
-                    .registerTypeAdapter(Processing.class, new Deserializers.ProcessingDeserializer())
-                    .registerTypeAdapter(Axis[].class, new Deserializers.AxesDeserializer())
-                    .registerTypeAdapter(Processing.ProcessingMode.class, new Deserializers.ProcessingModeDeserializer())
-                    .registerTypeAdapter(TensorDataDescription.class, new Deserializers.TensorDataDescriptionDeserializer())
+                    .registerTypeAdapter(Processing.class, new Processing.ProcessingDeserializer())
+                    .registerTypeAdapter(Processing.ProcessingMode.class, new Processing.ProcessingModeDeserializer())
+                    .registerTypeAdapter(Axis[].class, new Axis.AxesDeserializer())
+                    .registerTypeAdapter(TensorDataDescription.class, new TensorDataDescription.Deserializer())
                     .setDateFormat("yyyy-MM-dd'T'HH:mm:ss");
 
 
@@ -124,7 +124,7 @@ public class Parsing {
      */
     static final List<String> MODEL_NAMES = List.of("model.yaml", "model.yml", "rdf.yaml", "rdf.yml");
 
-    static Path findModelRdf(Path path) throws IOException {
+    public static Path findModelRdf(Path path) throws IOException {
         return findRdf(path, MODEL_NAMES);
     }
 
@@ -173,7 +173,7 @@ public class Parsing {
         return null;
     }
 
-    static boolean isYamlPath(Path path) {
+    public static boolean isYamlPath(Path path) {
         if (Files.isRegularFile(path)) {
             var name = path.getFileName().toString().toLowerCase();
             return name.endsWith(".yaml") || name.endsWith(".yml");

@@ -13,7 +13,7 @@ import com.google.gson.JsonObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import qupath.bioimageio.spec.tmp.axes.Axis;
+import qupath.bioimageio.spec.axes.Axis;
 
 /**
  * Parse the model spec at <a href="https://github.com/bioimage-io/spec-bioimage-io">https://github.com/bioimage-io/spec-bioimage-io</a> in Java.
@@ -62,13 +62,13 @@ public class Utils {
 	 * @return A parsed T object.
 	 * @throws IllegalArgumentException if doStrict is true and the field is not found
 	 */
-	private static <T> T deserializeField(JsonDeserializationContext context, JsonObject obj, String name, Type typeOfT, boolean doStrict) throws IllegalArgumentException {
+	public static <T> T deserializeField(JsonDeserializationContext context, JsonObject obj, String name, Type typeOfT, boolean doStrict) throws IllegalArgumentException {
 		if (doStrict && !obj.has(name))
 			throw new IllegalArgumentException("Required field " + name + " not found");
 		return deserializeField(context, obj, name, typeOfT, null);
 	}
 
-	private static <T> T deserializeField(JsonDeserializationContext context, JsonObject obj, String name, Type typeOfT, T defaultValue) {
+	public static <T> T deserializeField(JsonDeserializationContext context, JsonObject obj, String name, Type typeOfT, T defaultValue) {
 		if (obj.has(name)) {
 			return ensureUnmodifiable(context.deserialize(obj.get(name), typeOfT));
 		}
