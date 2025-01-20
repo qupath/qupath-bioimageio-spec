@@ -1,7 +1,10 @@
 package qupath.bioimageio.spec;
-import static org.junit.jupiter.api.Assertions.*;
-import static qupath.bioimageio.parsing.Parsing.findModelRdf;
-import static qupath.bioimageio.parsing.Parsing.isYamlPath;
+
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.net.URISyntaxException;
@@ -11,14 +14,13 @@ import java.nio.file.Paths;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.MethodSource;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import qupath.bioimageio.parsing.Parsing;
+import static org.junit.jupiter.api.Assertions.*;
+import static qupath.bioimageio.spec.Model.findModelRdf;
+import static qupath.bioimageio.spec.Model.isYamlPath;
+import static qupath.bioimageio.spec.Model.parseModel;
 
 /**
  * Test parsing the spec.
@@ -34,16 +36,18 @@ class TestBioImageIoSpec {
 		if (testPath != null) {
 			path = Paths.get(testPath);
 		} else {
-			path = Paths.get(TestBioImageIoSpec.class.getResource("/specs").toURI());			
+			path = Paths.get(Objects.requireNonNull(TestBioImageIoSpec.class.getResource("/specs")).toURI());
 		}
 		int testDepth = Integer.parseInt(System.getProperty("depth", "5"));
 		
 		if (containsModel(path))
 			return Collections.singletonList(path);
 		else if (Files.isDirectory(path)) {
-			return Files.walk(path, testDepth)
-			.filter(TestBioImageIoSpec::containsModel)
-			.collect(Collectors.toSet());
+			try (var fstream = Files.walk(path, testDepth)) {
+				return fstream
+						.filter(TestBioImageIoSpec::containsModel)
+						.collect(Collectors.toSet());
+			}
 		} else {
 			logger.error("No yaml files found to test!");
 			return Collections.emptyList();
@@ -69,14 +73,14 @@ class TestBioImageIoSpec {
 
 	/**
 	 * Test that the model in a specific path can be parsed.
-	 * @param path
+	 * @param path The path.
 	 */
 	@ParameterizedTest
 	@MethodSource("provideYamlPaths")
 	void testParseSpec(Path path) {
 		try {
 			logger.info("Attempting to parse {}", path);
-			var model = Parsing.parseModel(path);
+			var model = parseModel(path);
 			assertNotNull(model);
 			if (Files.isDirectory(path))
 				assertEquals(path.toUri(), model.getBaseURI());
