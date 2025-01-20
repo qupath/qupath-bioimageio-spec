@@ -1,4 +1,20 @@
-package qupath.bioimageio.spec.axes;
+/*
+ * Copyright 2025 University of Edinburgh
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+package qupath.bioimageio.spec.tensor.axes;
 
 import com.google.gson.JsonDeserializationContext;
 import com.google.gson.JsonDeserializer;
@@ -6,15 +22,17 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonParseException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import qupath.bioimageio.spec.sizes.Size;
+import qupath.bioimageio.spec.tensor.sizes.Size;
 import qupath.bioimageio.spec.tensor.BaseTensor;
 
 import java.lang.reflect.Type;
+import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.stream.Collectors;
 
-import static qupath.bioimageio.spec.Utils.deserializeField;
-import static qupath.bioimageio.spec.sizes.Size.deserializeSize;
+import static qupath.bioimageio.spec.Model.deserializeField;
+import static qupath.bioimageio.spec.tensor.sizes.Size.deserializeSize;
 
 /**
  * Base axis class for 0.4 and 0.5 axes.
@@ -50,7 +68,7 @@ public interface Axis {
     void validate(List<? extends BaseTensor> tensors);
 
     class AxesDeserializer implements JsonDeserializer<Axis[]> {
-        Logger logger = LoggerFactory.getLogger(AxesDeserializer.class);
+        private static final Logger logger = LoggerFactory.getLogger(AxesDeserializer.class);
 
         @Override
         public Axis[] deserialize(JsonElement jsonElement, Type type, JsonDeserializationContext context) throws JsonParseException {
@@ -121,6 +139,15 @@ public interface Axis {
             logger.error("Unknown JSON element {}", jsonElement);
             return null;
         }
+    }
+
+    /**
+     * Get the old "bcyx" style axis representation of an Axis array.
+     * @param axes The Axis array.
+     * @return A string representing the axis types.
+     */
+    static String getAxesString(Axis[] axes) {
+        return Arrays.stream(axes).map(a -> a.getType().toString()).collect(Collectors.joining());
     }
 
 }

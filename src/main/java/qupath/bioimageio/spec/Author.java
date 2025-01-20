@@ -8,7 +8,8 @@ import com.google.gson.annotations.SerializedName;
 
 import java.lang.reflect.Type;
 
-import static qupath.bioimageio.spec.Utils.deserializeField;
+import static qupath.bioimageio.spec.Model.deserializeField;
+
 
 /**
  * Author or maintainer.

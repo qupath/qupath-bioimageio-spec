@@ -1,8 +1,7 @@
 package qupath.bioimageio.spec.tensor;
 
 import com.google.gson.annotations.SerializedName;
-import qupath.bioimageio.spec.Shape;
-import qupath.bioimageio.spec.axes.Axis;
+import qupath.bioimageio.spec.tensor.axes.Axis;
 
 import java.util.Arrays;
 import java.util.List;

@@ -1,21 +1,70 @@
-package qupath.bioimageio.spec;
+/*
+ * Copyright 2025 University of Edinburgh
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+package qupath.bioimageio.spec.tensor;
 
 import com.google.gson.JsonDeserializationContext;
 import com.google.gson.JsonDeserializer;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonParseException;
-import qupath.bioimageio.spec.sizes.Size;
-import qupath.bioimageio.spec.tensor.BaseTensor;
+import qupath.bioimageio.spec.tensor.sizes.Size;
 
 import java.lang.reflect.Type;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.IntStream;
 
 /**
  * Shape of input or output tensor.
  */
 public class Shape {
+
+    /**
+     * Create a shape array for a given axes.
+     * The axes are expected to a string containing only the characters
+     * {@code bitczyx} as defined in the spec.
+     * <p>
+     * The purpose of this is to build shape arrays easily without needing to
+     * explicitly handle different axes and dimension ordering.
+     * <p>
+     * An example:
+     * <pre>
+     * <code>
+     * int[] shape = createShapeArray("byxc", Map.of('x', 256, 'y', 512), 1);
+     * </code>
+     * </pre>
+     * <p>
+     * This should result in an int array with values {@code [1, 512, 256, 1]}.
+     *
+     * @param axes the axes string
+     * @param target map defining the intended length for specified dimensions
+     * @param defaultLength the default length to use for any dimension that are not included in the target map
+     * @return an int array with the same length as the axes string, containing the requested dimensions or default values
+     */
+    public static int[] createShapeArray(String axes, Map<Character, Integer> target, int defaultLength) {
+        int[] array = new int[axes.length()];
+        int i = 0;
+        for (var c : axes.toLowerCase().toCharArray()) {
+            array[i] = target.getOrDefault(c, defaultLength);
+            i++;
+        }
+        return array;
+    }
+
 
     protected int[] shape;
 
@@ -91,7 +140,13 @@ public class Shape {
         return "Shape (" + Arrays.toString(shape) + ")";
     }
 
-    public void validate(List<? extends BaseTensor> otherTensors) {}
+    /**
+     * Validate the invariants of this object, optionally with referene to other tensors.
+     * @param tensors Tensors that this object may reference.
+     */
+    public void validate(List<? extends BaseTensor> tensors) {
+        return;
+    }
 
     /**
      * A shape that is determined based on a minimum and a step size.

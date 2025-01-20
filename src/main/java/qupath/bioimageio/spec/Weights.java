@@ -15,7 +15,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import static qupath.bioimageio.spec.Utils.toUnmodifiableList;
+import static qupath.bioimageio.spec.Model.toUnmodifiableList;
+
 
 public class Weights {
     /**
@@ -121,7 +122,7 @@ public class Weights {
 
 
     static class WeightsMapDeserializer implements JsonDeserializer<WeightsMap> {
-        Logger logger = LoggerFactory.getLogger(Weights.class);
+        private static final Logger logger = LoggerFactory.getLogger(Weights.class);
 
         @Override
         public WeightsMap deserialize(JsonElement json, Type typeOfT, JsonDeserializationContext context)

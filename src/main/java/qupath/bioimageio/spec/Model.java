@@ -13,7 +13,9 @@ import org.slf4j.LoggerFactory;
 import org.yaml.snakeyaml.LoaderOptions;
 import org.yaml.snakeyaml.Yaml;
 import org.yaml.snakeyaml.constructor.SafeConstructor;
-import qupath.bioimageio.spec.axes.Axis;
+import qupath.bioimageio.spec.tensor.Processing;
+import qupath.bioimageio.spec.tensor.Shape;
+import qupath.bioimageio.spec.tensor.axes.Axis;
 import qupath.bioimageio.spec.tensor.BaseTensor;
 import qupath.bioimageio.spec.tensor.InputTensor;
 import qupath.bioimageio.spec.tensor.OutputTensor;
@@ -28,15 +30,15 @@ import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static qupath.bioimageio.spec.Utils.deserializeField;
-import static qupath.bioimageio.spec.Utils.toUnmodifiableList;
 
 /**
  * Resource based on the main model spec.
@@ -211,7 +213,7 @@ public class Model extends Resource {
             }
         } else if (path.toAbsolutePath().toString().toLowerCase().endsWith(".zip")) {
             // Check zip file
-            try (var fs = FileSystems.newFileSystem(path, (ClassLoader)null)) {
+            try (var fs = FileSystems.newFileSystem(path, null)) {
                 for (var dir : fs.getRootDirectories()) {
                     for (var name : MODEL_NAMES) {
                         var p = dir.resolve(name);
@@ -240,7 +242,7 @@ public class Model extends Resource {
      * This otherwise caused several failures for data range.
      */
     static class DoubleArrayDeserializer implements JsonDeserializer<double[]> {
-        Logger logger = LoggerFactory.getLogger(DoubleArrayDeserializer.class);
+        private static final Logger logger = LoggerFactory.getLogger(DoubleArrayDeserializer.class);
 
         @Override
         public double[] deserialize(JsonElement json, Type typeOfT, JsonDeserializationContext context)
@@ -322,7 +324,7 @@ public class Model extends Resource {
     }
 
     /**
-     * Alternative to {@link #getWeights(String)}} using a string key.
+     * Alternative to {@link #getWeights()}} using a string key.
      * @param key The query key string.
      * @return The weights value, or null if not found.
      */
@@ -368,7 +370,7 @@ public class Model extends Resource {
 
 
 
-    public static class Deserializer implements JsonDeserializer<Model> {
+    static class Deserializer implements JsonDeserializer<Model> {
 
         @Override
         public Model deserialize(JsonElement json, Type typeOfT, JsonDeserializationContext context)
@@ -433,6 +435,61 @@ public class Model extends Resource {
         model.sampleInputs = deserializeField(context, obj, "sample_inputs", parameterizedListType(String.class), Collections.emptyList());
         model.sampleOutputs = deserializeField(context, obj, "sample_outputs", parameterizedListType(String.class), Collections.emptyList());
     }
+
+
+    /**
+     * Ensure the input is an unmodifiable list, or empty list if null.
+     * Note that OpenJDK implementation is expected to return its input if already unmodifiable.
+     * @param <T> The type of list objects.
+     * @param list The input list.
+     * @return An unmodifiable list.
+     */
+    public static <T> List<T> toUnmodifiableList(List<T> list) {
+        return list == null || list.isEmpty() ? Collections.emptyList() : Collections.unmodifiableList(list);
+    }
+
+    /**
+     * Deserialize a field from a JSON object.
+     * @param <T> The type of the field.
+     * @param context The context used for deserialization.
+     * @param obj The JSON object that contains the field.
+     * @param name The name of the field.
+     * @param typeOfT The type of the field.
+     * @param doStrict if true, fail if the field is missing; otherwise, return null
+     * @return A parsed T object.
+     * @throws IllegalArgumentException if doStrict is true and the field is not found
+     */
+    public static <T> T deserializeField(JsonDeserializationContext context, JsonObject obj, String name, Type typeOfT, boolean doStrict) throws IllegalArgumentException {
+        if (doStrict && !obj.has(name))
+            throw new IllegalArgumentException("Required field " + name + " not found");
+        return deserializeField(context, obj, name, typeOfT, null);
+    }
+
+    public static <T> T deserializeField(JsonDeserializationContext context, JsonObject obj, String name, Type typeOfT, T defaultValue) {
+        if (obj.has(name)) {
+            return ensureUnmodifiable(context.deserialize(obj.get(name), typeOfT));
+        }
+        return ensureUnmodifiable(defaultValue);
+    }
+    /**
+     * Minor optimization - ensure any lists, maps or sets are unmodifiable at this point,
+     * to avoid generating new unmodifiable wrappers later.
+     * @param <T> The type of the object.
+     * @param input A collection that should be made unmodifiable (copied if not already unmodifiable).
+     * @return An unmodifiable object of class T.
+     */
+    @SuppressWarnings("unchecked")
+    private static <T> T ensureUnmodifiable(T input) {
+        if (input instanceof List)
+            return (T)Collections.unmodifiableList((List<?>)input);
+        if (input instanceof Map)
+            return (T)Collections.unmodifiableMap((Map<?, ?>)input);
+        if (input instanceof Set)
+            return (T)Collections.unmodifiableSet((Set<?>)input);
+        return input;
+    }
+
+
 
 
 

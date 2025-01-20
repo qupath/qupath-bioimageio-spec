@@ -5,4 +5,7 @@ module io.github.qupath.bioimageio.spec {
 	requires org.slf4j;
 
 	exports qupath.bioimageio.spec;
+	exports qupath.bioimageio.spec.tensor;
+	exports qupath.bioimageio.spec.tensor.axes;
+	exports qupath.bioimageio.spec.tensor.sizes;
 }

@@ -1,10 +1,8 @@
 package qupath.bioimageio.spec.tensor;
 
-import qupath.bioimageio.spec.Processing;
-
 import java.util.List;
 
-import static qupath.bioimageio.spec.Utils.toUnmodifiableList;
+import static qupath.bioimageio.spec.Model.toUnmodifiableList;
 
 /**
  * Model output, including shape, axes, halo, datatype and postprocessing.

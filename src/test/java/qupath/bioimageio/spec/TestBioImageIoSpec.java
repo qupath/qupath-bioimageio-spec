@@ -21,6 +21,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import static qupath.bioimageio.spec.Model.findModelRdf;
 import static qupath.bioimageio.spec.Model.isYamlPath;
 import static qupath.bioimageio.spec.Model.parseModel;
+import static qupath.bioimageio.spec.tensor.Shape.createShapeArray;
 
 /**
  * Test parsing the spec.
@@ -95,8 +96,8 @@ class TestBioImageIoSpec {
 	 */
 	@Test
 	void testCreateShape() {
-		assertArrayEquals(new int[]{1, 512, 256, 1}, Utils.createShapeArray("byxc", Map.of('x', 256, 'y', 512), 1));
-		assertArrayEquals(new int[]{256, 512, -1}, Utils.createShapeArray("xyc", Map.of('x', 256, 'y', 512), -1));
-		assertArrayEquals(new int[]{3, 4, 5, 6}, Utils.createShapeArray("xyct", Map.of('x', 3, 'y', 4, 'c', 5, 't', 6), -1));
+		assertArrayEquals(new int[]{1, 512, 256, 1}, createShapeArray("byxc", Map.of('x', 256, 'y', 512), 1));
+		assertArrayEquals(new int[]{256, 512, -1}, createShapeArray("xyc", Map.of('x', 256, 'y', 512), -1));
+		assertArrayEquals(new int[]{3, 4, 5, 6}, createShapeArray("xyct", Map.of('x', 3, 'y', 4, 'c', 5, 't', 6), -1));
 	}
 }

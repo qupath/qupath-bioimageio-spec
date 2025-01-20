@@ -14,9 +14,9 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
+import static qupath.bioimageio.spec.Model.deserializeField;
 import static qupath.bioimageio.spec.Model.parameterizedListType;
-import static qupath.bioimageio.spec.Utils.deserializeField;
-import static qupath.bioimageio.spec.Utils.toUnmodifiableList;
+import static qupath.bioimageio.spec.Model.toUnmodifiableList;
 
 /**
  * General resource, based upon the RDF.
