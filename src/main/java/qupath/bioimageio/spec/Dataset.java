@@ -11,7 +11,7 @@ import java.lang.reflect.Type;
  */
 public class Dataset extends Resource {
 
-    static class DatasetDeserializer implements JsonDeserializer<Dataset> {
+    static class Deserializer implements JsonDeserializer<Dataset> {
 
         @Override
         public Dataset deserialize(JsonElement json, Type typeOfT, JsonDeserializationContext context) {

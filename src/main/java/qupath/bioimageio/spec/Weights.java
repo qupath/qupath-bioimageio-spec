@@ -109,7 +109,7 @@ public class Weights {
         }
     }
 
-    public static class WeightsEntryDeserializer implements JsonDeserializer<WeightsEntry> {
+    static class WeightsEntryDeserializer implements JsonDeserializer<WeightsEntry> {
 
         @Override
         public WeightsEntry deserialize(JsonElement json, Type typeOfT, JsonDeserializationContext context)
@@ -120,7 +120,7 @@ public class Weights {
     }
 
 
-    public static class WeightsMapDeserializer implements JsonDeserializer<WeightsMap> {
+    static class WeightsMapDeserializer implements JsonDeserializer<WeightsMap> {
         Logger logger = LoggerFactory.getLogger(Weights.class);
 
         @Override

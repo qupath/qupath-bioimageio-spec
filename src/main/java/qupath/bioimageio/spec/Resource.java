@@ -14,8 +14,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
-import static qupath.bioimageio.parsing.Parsing.parameterizedListType;
-
+import static qupath.bioimageio.spec.Model.parameterizedListType;
 import static qupath.bioimageio.spec.Utils.deserializeField;
 import static qupath.bioimageio.spec.Utils.toUnmodifiableList;
 
@@ -134,16 +133,16 @@ public class Resource {
         return attachments == null ? Collections.emptyMap() : Collections.unmodifiableMap(attachments);
     }
 
-    public boolean isNewerThan(ModuleDescriptor.Version version) {
+    boolean isNewerThan(ModuleDescriptor.Version version) {
         return ModuleDescriptor.Version.parse(this.getFormatVersion()).compareTo(version) > 0;
     }
 
-    public boolean isNewerThan(String version) {
+    boolean isNewerThan(String version) {
         return isNewerThan(ModuleDescriptor.Version.parse(version));
     }
 
 
-    public static class Deserializer implements JsonDeserializer<Resource> {
+    static class Deserializer implements JsonDeserializer<Resource> {
 
         @Override
         public Resource deserialize(JsonElement json, Type typeOfT, JsonDeserializationContext context) {

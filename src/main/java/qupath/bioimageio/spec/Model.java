@@ -125,7 +125,7 @@ public class Model extends Resource {
 
     /**
      * Parse a model from an input stream.
-     * Note that {@link Model.#getBaseURI()} will return null in this case, because the base URI
+     * Note that {@link Model#getBaseURI()} will return null in this case, because the base URI
      * is unknown.
      * @param stream A stream of YAML.
      * @return The parsed model.
@@ -232,9 +232,7 @@ public class Model extends Resource {
         return false;
     }
 
-
-
-    public static Type parameterizedListType(Type typeOfList) {
+    static Type parameterizedListType(Type typeOfList) {
         return TypeToken.getParameterized(List.class, typeOfList).getType();
     }
     /**

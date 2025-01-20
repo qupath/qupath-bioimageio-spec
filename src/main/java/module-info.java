@@ -5,6 +5,4 @@ module io.github.qupath.bioimageio.spec {
 	requires org.slf4j;
 
 	exports qupath.bioimageio.spec;
-	exports qupath.bioimageio.parsing;
-
 }
