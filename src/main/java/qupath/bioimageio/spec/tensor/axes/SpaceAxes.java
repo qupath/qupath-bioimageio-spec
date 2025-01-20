@@ -76,7 +76,7 @@ public class SpaceAxes {
 
     abstract static class SpaceAxisBase extends AxisBase implements ScaledAxis {
         private final SpaceUnit unit;
-        private double scale;
+        private final double scale;
 
         SpaceAxisBase(String id, String description, String unit, double scale) {
             this(id, description, SpaceUnit.valueOf(unit.toUpperCase()), scale);
@@ -144,7 +144,7 @@ public class SpaceAxes {
 
     static class SpaceOutputAxisWithHalo extends SpaceOutputAxis implements WithHalo {
         private ReferencedSize size;
-        private int halo;
+        private final int halo;
 
         SpaceOutputAxisWithHalo(String id, String description, String unit, double scale, Size size, int halo) {
             super(id, description, unit, scale, size);

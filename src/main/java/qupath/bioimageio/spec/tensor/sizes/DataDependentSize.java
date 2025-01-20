@@ -25,8 +25,8 @@ import java.util.List;
  * A size that is only known after model inference (eg, detecting an unknown number of instances).
  */
 class DataDependentSize implements Size {
-    private int min;
-    private int max;
+    private final int min;
+    private final int max;
 
     DataDependentSize(int min, int max) {
         this.min = min;

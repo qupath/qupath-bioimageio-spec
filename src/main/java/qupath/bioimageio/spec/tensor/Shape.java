@@ -90,7 +90,7 @@ public class Shape {
      * <p>
      * For an explicit shape (without scale/offset/step etc.) the target
      * does not influence the result.
-     * @param target The shape (in pixel width/height/etc) in pixels that we are requesting.
+     * @param target The shape (in pixel width/height/etc.) in pixels that we are requesting.
      * @return As close to the shape as the Shape object allows if a parameterized shape, or the fixed shape if fixed.
      */
     public int[] getTargetShape(int... target) {
@@ -145,7 +145,6 @@ public class Shape {
      * @param tensors Tensors that this object may reference.
      */
     public void validate(List<? extends BaseTensor> tensors) {
-        return;
     }
 
     /**
