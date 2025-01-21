@@ -19,7 +19,7 @@ repositories {
 
 description = 'Support for parsing the BioImage Model Zoo spec in Java'
 
-version = "0.2.0"
+version = "0.2.1"
 
 dependencies {
     // These are included in QuPath distribution
@@ -28,7 +28,7 @@ dependencies {
     implementation 'com.google.code.gson:gson:2.10'
 
     testImplementation "org.junit.jupiter:junit-jupiter:5.9.1"
-    testImplementation 'ch.qos.logback:logback-classic:1.4.12'
+    testImplementation 'ch.qos.logback:logback-classic:1.5.16'
 }
 
 processResources {
