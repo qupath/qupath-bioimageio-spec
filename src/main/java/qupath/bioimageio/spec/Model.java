@@ -354,7 +354,10 @@ public class Model extends Resource {
     public List<String> getTestInputs() {
         var ti = testInputs;
         if (ti == null && isNewerThan("0.5")) {
-            ti = inputs.stream().map(BaseTensor::getTestTensor).collect(Collectors.toList());
+            ti = inputs.stream()
+                    .map(BaseTensor::getTestTensor)
+                    .map(FileDescr::getSource)
+                    .collect(Collectors.toList());
         }
         return toUnmodifiableList(ti);
     }
@@ -362,7 +365,10 @@ public class Model extends Resource {
     public List<String> getTestOutputs() {
         var to = testOutputs;
         if (to == null && isNewerThan("0.5")) {
-            to = outputs.stream().map(BaseTensor::getTestTensor).collect(Collectors.toList());
+            to = outputs.stream()
+                    .map(BaseTensor::getTestTensor)
+                    .map(FileDescr::getSource)
+                    .collect(Collectors.toList());
         }
         return toUnmodifiableList(to);
     }
@@ -370,7 +376,10 @@ public class Model extends Resource {
     public List<String> getSampleInputs() {
         var si = sampleInputs;
         if (si == null && isNewerThan("0.5")) {
-            si = inputs.stream().map(BaseTensor::getSampleTensor).collect(Collectors.toList());
+            si = inputs.stream()
+                    .map(BaseTensor::getTestTensor)
+                    .map(FileDescr::getSource)
+                    .collect(Collectors.toList());
         }
         return toUnmodifiableList(si);
     }
@@ -378,7 +387,10 @@ public class Model extends Resource {
     public List<String> getSampleOutputs() {
         var so = sampleOutputs;
         if (so == null && isNewerThan("0.5")) {
-            so = outputs.stream().map(BaseTensor::getSampleTensor).collect(Collectors.toList());
+            so = outputs.stream()
+                    .map(BaseTensor::getTestTensor)
+                    .map(FileDescr::getSource)
+                    .collect(Collectors.toList());
         }
         return toUnmodifiableList(so);
     }

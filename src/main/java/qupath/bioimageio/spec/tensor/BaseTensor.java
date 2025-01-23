@@ -1,6 +1,7 @@
 package qupath.bioimageio.spec.tensor;
 
 import com.google.gson.annotations.SerializedName;
+import qupath.bioimageio.spec.FileDescr;
 import qupath.bioimageio.spec.tensor.axes.Axis;
 
 import java.util.Arrays;
@@ -16,7 +17,7 @@ public abstract class BaseTensor {
     @SerializedName("data_type")
     private String dataType;
     @SerializedName("test_tensor")
-    private String testTensor;
+    private FileDescr testTensor;
     @SerializedName("sample_tensor")
     private String sampleTensor;
     private String name;
@@ -66,8 +67,7 @@ public abstract class BaseTensor {
         }
     }
 
-
-    public String getTestTensor() {
+    public FileDescr getTestTensor() {
         return testTensor;
     }
 
