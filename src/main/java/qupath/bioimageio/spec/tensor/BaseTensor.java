@@ -15,6 +15,10 @@ public abstract class BaseTensor {
     protected Axis[] axes;
     @SerializedName("data_type")
     private String dataType;
+    @SerializedName("test_tensor")
+    private String testTensor;
+    @SerializedName("sample_tensor")
+    private String sampleTensor;
     private String name;
     private String id;
     private Shape shape;
@@ -63,4 +67,11 @@ public abstract class BaseTensor {
     }
 
 
+    public String getTestTensor() {
+        return testTensor;
+    }
+
+    public String getSampleTensor() {
+        return sampleTensor;
+    }
 }

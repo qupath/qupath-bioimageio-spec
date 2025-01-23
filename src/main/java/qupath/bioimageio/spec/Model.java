@@ -352,20 +352,37 @@ public class Model extends Resource {
     }
 
     public List<String> getTestInputs() {
-        return toUnmodifiableList(testInputs);
+        var ti = testInputs;
+        if (ti == null && isNewerThan("0.5")) {
+            ti = inputs.stream().map(BaseTensor::getTestTensor).collect(Collectors.toList());
+        }
+        return toUnmodifiableList(ti);
     }
 
     public List<String> getTestOutputs() {
-        return toUnmodifiableList(testOutputs);
+        var to = testOutputs;
+        if (to == null && isNewerThan("0.5")) {
+            to = outputs.stream().map(BaseTensor::getTestTensor).collect(Collectors.toList());
+        }
+        return toUnmodifiableList(to);
     }
 
     public List<String> getSampleInputs() {
-        return toUnmodifiableList(sampleInputs);
+        var si = sampleInputs;
+        if (si == null && isNewerThan("0.5")) {
+            si = inputs.stream().map(BaseTensor::getSampleTensor).collect(Collectors.toList());
+        }
+        return toUnmodifiableList(si);
     }
 
     public List<String> getSampleOutputs() {
-        return toUnmodifiableList(sampleOutputs);
+        var so = sampleOutputs;
+        if (so == null && isNewerThan("0.5")) {
+            so = outputs.stream().map(BaseTensor::getSampleTensor).collect(Collectors.toList());
+        }
+        return toUnmodifiableList(so);
     }
+
 
 
 
