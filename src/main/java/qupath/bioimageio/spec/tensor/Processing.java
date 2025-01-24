@@ -49,10 +49,18 @@ public class Processing {
         this.name = name;
     }
 
+    /**
+     * Get the name of this operation
+     * @return the name
+     */
     public String getName() {
         return name;
     }
 
+    /**
+     * Get the keyword arguments for the operation
+     * @return named arguments of uncertain type
+     */
     public Map<String, ?> getKwargs() {
         return kwargs == null ? Collections.emptyMap() : Collections.unmodifiableMap(kwargs);
     }
@@ -68,6 +76,10 @@ public class Processing {
 
         double threshold = Double.NaN;
 
+        /**
+         * Get the threshold for binarization
+         * @return the numeric threshold
+         */
         public double getThreshold() {
             return threshold;
         }
@@ -86,10 +98,18 @@ public class Processing {
             super("clip");
         }
 
+        /**
+         * The minimum value
+         * @return the minimum
+         */
         public double getMin() {
             return min;
         }
 
+        /**
+         * The maximum value
+         * @return the maximum
+         */
         public double getMax() {
             return max;
         }
@@ -109,16 +129,28 @@ public class Processing {
             super("scale_linear");
         }
 
+        /**
+         * Get the multiplicative scaling factor
+         * @return the scale
+         */
         public double[] getGain() {
             return gain == null ? null : gain.clone();
         }
 
+        /**
+         * Get the additive offset
+         * @return the offset
+         */
         public double[] getOffset() {
             return offset == null ? null : offset.clone();
         }
 
+        /**
+         * Get the axes this applies to.
+         * @return the axes
+         */
         public Axis[] getAxes() {
-            return axes;
+            return axes == null ? null : axes.clone();
         }
 
     }
@@ -134,6 +166,10 @@ public class Processing {
 
     }
 
+    /**
+     * A processing mode that operates optionally on different sets of data.
+     * For example, per_dataset or per_sample.
+     */
     protected abstract static class ProcessingWithMode extends Processing {
 
         ProcessingMode mode = ProcessingMode.PER_SAMPLE;
@@ -144,16 +180,35 @@ public class Processing {
             super(name);
         }
 
+        /**
+         * Epsilon for numeric stability:
+         * out  = (tensor - mean) / (std + eps) * (ref_std + eps) + ref_mean.
+         * @return The epsilon value.
+         */
         public double getEps() {
             return eps;
         }
 
+        /**
+         * Mode for computing processing. Not all are supported for all operations, but here are some options:
+         * |     mode    |             description              |
+         * | ----------- | ------------------------------------ |
+         * |   fixed     | Fixed values                         |
+         * | per_dataset | Compute for the entire dataset       |
+         * | per_sample  | Compute for each sample individually |
+         */
         public ProcessingMode getMode() {
             return mode;
         }
 
+        /**
+         * The subset of axes to scale jointly.
+         * For example xy to normalize the two image axes for 2d data jointly.
+         * Default: scale all non-batch axes jointly.
+         * @return the subset of axes to scale jointly.
+         */
         public Axis[] getAxes() {
-            return axes;
+            return axes.clone();
         }
 
     }
@@ -169,10 +224,12 @@ public class Processing {
             super("scale_mean_variance");
         }
 
+        /**
+         * The tensor to match mean and variance to.
+         */
         public String getReferenceTensor() {
             return referenceTensor;
         }
-
     }
 
     /**
@@ -189,14 +246,25 @@ public class Processing {
             super("scale_range");
         }
 
+        /**
+         * The minimum percentile.
+         * @return the min percentile
+         */
         public double getMinPercentile() {
             return minPercentile;
         }
-
+        /**
+         * The maximum percentile.
+         * @return the max percentile
+         */
         public double getMaxPercentile() {
             return maxPercentile;
         }
 
+        /**
+         * The reference tensor, which we use for range scaling.
+         * @return the reference tensor
+         */
         public String getReferenceTensor() {
             return referenceTensor;
         }
@@ -216,16 +284,26 @@ public class Processing {
             super("zero_mean_unit_variance");
         }
 
+        /**
+         * The mean value(s) to use for `mode: fixed`.
+         * For example `[1.1, 2.2, 3.3]` in the case of a 3 channel image with `axes: xy`.
+         * @return the mean value(s)
+         */
         public double[] getMean() {
             return mean == null ? null : mean.clone();
         }
 
+        /**
+         * The standard deviation values to use for `mode: fixed`. Analogous to mean.
+         * @return the std values.
+         */
         public double[] getStd() {
             return std == null ? null : std.clone();
         }
 
     }
 
+    // todo: this shouldn't be public, but it's in a different package
     public static class ProcessingModeDeserializer implements JsonDeserializer<ProcessingMode> {
         private static final Logger logger = LoggerFactory.getLogger(Processing.class);
         @Override
@@ -252,6 +330,7 @@ public class Processing {
 
     }
 
+    // todo: this shouldn't be public, but it's in a different package
     public static class ProcessingDeserializer implements JsonDeserializer<Processing> {
 
         @Override

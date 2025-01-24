@@ -144,7 +144,7 @@ public class Shape {
      * Validate the invariants of this object, optionally with referene to other tensors.
      * @param tensors Tensors that this object may reference.
      */
-    public void validate(List<? extends BaseTensor> tensors) {
+    void validate(List<? extends BaseTensor> tensors) {
     }
 
     /**
@@ -206,6 +206,10 @@ public class Shape {
         private double[] offset;
         private double[] scale;
 
+        /**
+         * Get the reference tensor
+         * @return the reference tensor.
+         */
         public String getReferenceTensor() {
             return referenceTensor;
         }
@@ -254,10 +258,14 @@ public class Shape {
 
     }
 
+    /**
+     * A Shape that wraps tensor Size objects from the 0.5 spec.
+     * Provides compatibility with code that expects 0.4-type tensor specifications.
+     */
     public static class SizesShape extends Shape {
         private final List<Size> sizes;
 
-        public SizesShape(List<Size> sizes) {
+        SizesShape(List<Size> sizes) {
             this.sizes = sizes;
             this.shape = this.sizes.stream().mapToInt(Size::getSize).toArray();
         }
@@ -281,6 +289,7 @@ public class Shape {
         }
     }
 
+    // todo: this shouldn't be public, but it's in a different package
     public static class Deserializer implements JsonDeserializer<Shape> {
 
         @Override

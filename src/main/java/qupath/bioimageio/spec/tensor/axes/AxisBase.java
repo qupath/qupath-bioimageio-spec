@@ -16,6 +16,9 @@
 
 package qupath.bioimageio.spec.tensor.axes;
 
+/**
+ * A base axis class.
+ */
 abstract class AxisBase implements Axis {
     private final String id;
     private final String description;

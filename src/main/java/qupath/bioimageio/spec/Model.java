@@ -225,7 +225,8 @@ public class Model extends Resource {
         return null;
     }
 
-    public static boolean isYamlPath(Path path) {
+
+    static boolean isYamlPath(Path path) {
         if (Files.isRegularFile(path)) {
             var name = path.getFileName().toString().toLowerCase();
             return name.endsWith(".yaml") || name.endsWith(".yml");
@@ -331,29 +332,75 @@ public class Model extends Resource {
         return getWeights(Weights.WeightsEntry.fromKey(key));
     }
 
+    /**
+     * The model from which this model is derived, e.g. by fine-tuning the weights.
+     * @return The parent model.
+     */
     public ModelParent getParent() {
         return parent;
     }
 
+    /**
+     * Timestamp in #<a href="https://en.wikipedia.org/wiki/ISO_8601">ISO 8601</a>) format
+     * with a few restrictions listed <a href="https://docs.python.org/3/library/datetime.html#datetime.datetime.fromisoformat">in the python docs</a>).
+     * @return The timestamp.
+     */
     public String getTimestamp() {
         return timestamp;
     }
 
+    /**
+     * A field for custom configuration that can contain any keys not present in the RDF spec.
+     * This means you should not store, for example, a GitHub repo URL in `config` since there is a `git_repo` field.
+     * Keys in `config` may be very specific to a tool or consumer software. To avoid conflicting definitions,
+     * it is recommended to wrap added configuration into a sub-field named with the specific domain or tool name,
+     * for example:
+     * ```yaml
+     * config:
+     *     bioimageio:  # here is the domain name
+     *         my_custom_key: 3837283
+     *             another_key:
+     *                 nested: value
+     *         imagej:       # config specific to ImageJ
+     *             macro_dir: path/to/macro/file
+     *     ```
+     * If possible, please use <a href="https://en.wikipedia.org/wiki/Snake_case">snake_case</a> for keys in `config`.
+     * You may want to list linked files additionally under `attachments` to include them when packaging a resource.
+     * (Packaging a resource means downloading/copying important linked files and creating a ZIP archive that contains
+     * an altered rdf.yaml file with local references to the downloaded files.)
+     * @return the config
+     */
     public Map<?, ?> getConfig() {
         return config;
     }
 
+    /**
+     * Get the input tensors
+     * @return the list of inputs
+     */
     public List<InputTensor> getInputs() {
         return toUnmodifiableList(inputs);
     }
 
+    /**
+     * Get the output tensors
+     * @return the list of output tensors
+     */
     public List<OutputTensor> getOutputs() {
         return toUnmodifiableList(outputs);
     }
 
+    /**
+     * Test input tensors compatible with the `inputs` description for a **single test case**.
+     * This means if your model has more than one input, you should provide one URL/relative path for each input.
+     * Each test input should be a file with an ndarray in
+     * h<a href="ttps://numpy.org/doc/stable/reference/generated/numpy.lib.format.html#module-numpy.lib.format.">numpy.lib file format</a>
+     * The extension must be '.npy'.
+     * @return The test inputs.
+     */
     public List<String> getTestInputs() {
         var ti = testInputs;
-        if (ti == null && isNewerThan("0.5")) {
+        if (ti == null && isFormatNewerThan("0.5")) {
             ti = inputs.stream()
                     .map(BaseTensor::getTestTensor)
                     .map(FileDescr::getSource)
@@ -362,9 +409,17 @@ public class Model extends Resource {
         return toUnmodifiableList(ti);
     }
 
+    /**
+     * Test output tensors compatible with the `output` description for a **single test case**.
+     * This means if your model has more than one output, you should provide one URL/relative path for each output.
+     * Each test output should be a file with an ndarray in
+     * h<a href="ttps://numpy.org/doc/stable/reference/generated/numpy.lib.format.html#module-numpy.lib.format.">numpy.lib file format</a>
+     * The extension must be '.npy'.
+     * @return The test outputs.
+     */
     public List<String> getTestOutputs() {
         var to = testOutputs;
-        if (to == null && isNewerThan("0.5")) {
+        if (to == null && isFormatNewerThan("0.5")) {
             to = outputs.stream()
                     .map(BaseTensor::getTestTensor)
                     .map(FileDescr::getSource)
@@ -373,9 +428,13 @@ public class Model extends Resource {
         return toUnmodifiableList(to);
     }
 
+    /**
+     * URLs/relative paths to sample outputs corresponding to the `sample_inputs`.
+     * @return the sample inputs.
+     */
     public List<String> getSampleInputs() {
         var si = sampleInputs;
-        if (si == null && isNewerThan("0.5")) {
+        if (si == null && isFormatNewerThan("0.5")) {
             si = inputs.stream()
                     .map(BaseTensor::getTestTensor)
                     .map(FileDescr::getSource)
@@ -384,15 +443,84 @@ public class Model extends Resource {
         return toUnmodifiableList(si);
     }
 
+    /**
+     * URLs/relative paths to sample outputs corresponding to the `sample_outputs`.
+     * @return the sample outputs.
+     */
     public List<String> getSampleOutputs() {
         var so = sampleOutputs;
-        if (so == null && isNewerThan("0.5")) {
+        if (so == null && isFormatNewerThan("0.5")) {
             so = outputs.stream()
                     .map(BaseTensor::getTestTensor)
                     .map(FileDescr::getSource)
                     .collect(Collectors.toList());
         }
         return toUnmodifiableList(so);
+    }
+
+
+
+
+    /**
+     * Ensure the input is an unmodifiable list, or empty list if null.
+     * Note that OpenJDK implementation is expected to return its input if already unmodifiable.
+     * @param <T> The type of list objects.
+     * @param list The input list.
+     * @return An unmodifiable list.
+     */
+    public static <T> List<T> toUnmodifiableList(List<T> list) {
+        return list == null || list.isEmpty() ? Collections.emptyList() : Collections.unmodifiableList(list);
+    }
+
+    /**
+     * Deserialize a field from a JSON object.
+     * @param <T> The type of the field.
+     * @param context The context used for deserialization.
+     * @param obj The JSON object that contains the field.
+     * @param name The name of the field.
+     * @param typeOfT The type of the field.
+     * @param doStrict if true, fail if the field is missing; otherwise, return null
+     * @return A parsed T object.
+     * @throws IllegalArgumentException if doStrict is true and the field is not found
+     */
+    public static <T> T deserializeField(JsonDeserializationContext context, JsonObject obj, String name, Type typeOfT, boolean doStrict) throws IllegalArgumentException {
+        if (doStrict && !obj.has(name))
+            throw new IllegalArgumentException("Required field " + name + " not found");
+        return deserializeField(context, obj, name, typeOfT, null);
+    }
+
+    /**
+     * Deserialize a field from a JSON object.
+     * @param <T> The type of the field.
+     * @param context The context used for deserialization.
+     * @param obj The JSON object that contains the field.
+     * @param name The name of the field.
+     * @param typeOfT The type of the field.
+     * @return A parsed T object.
+     * @throws IllegalArgumentException if doStrict is true and the field is not found
+     */
+    public static <T> T deserializeField(JsonDeserializationContext context, JsonObject obj, String name, Type typeOfT, T defaultValue) {
+        if (obj.has(name)) {
+            return ensureUnmodifiable(context.deserialize(obj.get(name), typeOfT));
+        }
+        return ensureUnmodifiable(defaultValue);
+    }
+    /**
+     * Minor optimization - ensure any lists, maps or sets are unmodifiable at this point,
+     * to avoid generating new unmodifiable wrappers later.
+     * @param <T> The type of the object.
+     * @param input A collection that should be made unmodifiable (copied if not already unmodifiable).
+     * @return An unmodifiable object of class T.
+     */
+    @SuppressWarnings("unchecked")
+    private static <T> T ensureUnmodifiable(T input) {
+        if (input instanceof List)
+            return (T)Collections.unmodifiableList((List<?>)input);
+        if (input instanceof Map)
+            return (T)Collections.unmodifiableMap((Map<?, ?>)input);
+        if (input instanceof Set)
+            return (T)Collections.unmodifiableSet((Set<?>)input);
+        return input;
     }
 
 
@@ -427,7 +555,7 @@ public class Model extends Resource {
         }
 
 
-        if (model.isNewerThan("0.5.0")) {
+        if (model.isFormatNewerThan("0.5.0")) {
             model.testInputs = List.of();
             model.testOutputs = List.of();
             model.timestamp = "";
@@ -464,58 +592,6 @@ public class Model extends Resource {
         model.sampleOutputs = deserializeField(context, obj, "sample_outputs", parameterizedListType(String.class), Collections.emptyList());
     }
 
-
-    /**
-     * Ensure the input is an unmodifiable list, or empty list if null.
-     * Note that OpenJDK implementation is expected to return its input if already unmodifiable.
-     * @param <T> The type of list objects.
-     * @param list The input list.
-     * @return An unmodifiable list.
-     */
-    public static <T> List<T> toUnmodifiableList(List<T> list) {
-        return list == null || list.isEmpty() ? Collections.emptyList() : Collections.unmodifiableList(list);
-    }
-
-    /**
-     * Deserialize a field from a JSON object.
-     * @param <T> The type of the field.
-     * @param context The context used for deserialization.
-     * @param obj The JSON object that contains the field.
-     * @param name The name of the field.
-     * @param typeOfT The type of the field.
-     * @param doStrict if true, fail if the field is missing; otherwise, return null
-     * @return A parsed T object.
-     * @throws IllegalArgumentException if doStrict is true and the field is not found
-     */
-    public static <T> T deserializeField(JsonDeserializationContext context, JsonObject obj, String name, Type typeOfT, boolean doStrict) throws IllegalArgumentException {
-        if (doStrict && !obj.has(name))
-            throw new IllegalArgumentException("Required field " + name + " not found");
-        return deserializeField(context, obj, name, typeOfT, null);
-    }
-
-    public static <T> T deserializeField(JsonDeserializationContext context, JsonObject obj, String name, Type typeOfT, T defaultValue) {
-        if (obj.has(name)) {
-            return ensureUnmodifiable(context.deserialize(obj.get(name), typeOfT));
-        }
-        return ensureUnmodifiable(defaultValue);
-    }
-    /**
-     * Minor optimization - ensure any lists, maps or sets are unmodifiable at this point,
-     * to avoid generating new unmodifiable wrappers later.
-     * @param <T> The type of the object.
-     * @param input A collection that should be made unmodifiable (copied if not already unmodifiable).
-     * @return An unmodifiable object of class T.
-     */
-    @SuppressWarnings("unchecked")
-    private static <T> T ensureUnmodifiable(T input) {
-        if (input instanceof List)
-            return (T)Collections.unmodifiableList((List<?>)input);
-        if (input instanceof Map)
-            return (T)Collections.unmodifiableMap((Map<?, ?>)input);
-        if (input instanceof Set)
-            return (T)Collections.unmodifiableSet((Set<?>)input);
-        return input;
-    }
 
 
 

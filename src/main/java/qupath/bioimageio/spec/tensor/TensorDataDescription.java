@@ -16,6 +16,9 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+/**
+ * Descriptions of tensor data types, primarily ratio types or nominal/ordinal types represented by int-like numeric values.
+ */
 public interface TensorDataDescription {
 
     /**
@@ -54,7 +57,7 @@ public interface TensorDataDescription {
     class IntervalOrRatioDataDescription implements TensorDataDescription {
         private final IntervalOrRatioDType type;
         private final List<Optional<Float>> range;
-        private final String unit; // todo: SI unit or "abitrary unit": validate somehow
+        private final String unit; // SI unit or "abitrary unit": should we validate somehow?
         private final float scale;
         private final float offset;
 
@@ -82,22 +85,42 @@ public interface TensorDataDescription {
             this(type, List.of(Optional.empty(), Optional.empty()), "aritrary unit", 1, 0);
         }
 
+        /**
+         * Get the data type of the ratio
+         * @return The data type
+         */
         public IntervalOrRatioDType getType() {
             return type;
         }
 
+        /**
+         * Get the range (if present)
+         * @return the range
+         */
         public List<Optional<Float>> getRange() {
             return range;
         }
 
+        /**
+         * Get the unit of the ratio
+         * @return should be "arbitrary unit" or an SI unit
+         */
         public String getUnit() {
             return unit;
         }
 
+        /**
+         * Scale for data on an interval (or ratio) scale.
+         * @return A float (default is 1)
+         */
         public float getScale() {
             return scale;
         }
 
+        /**
+         * Offset for data on a ratio scale.
+         * @return a possibly null float
+         */
         public float getOffset() {
             return offset;
         }

@@ -11,6 +11,10 @@ import static qupath.bioimageio.spec.Model.toUnmodifiableList;
 public class InputTensor extends BaseTensor {
     private List<Processing> preprocessing;
 
+    /**
+     * Get the pre-processing steps for this tensor.
+     * @return A list of processing steps.
+     */
     public List<Processing> getPreprocessing() {
         return toUnmodifiableList(preprocessing);
     }

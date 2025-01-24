@@ -21,6 +21,9 @@ import qupath.bioimageio.spec.tensor.BaseTensor;
 
 import java.util.List;
 
+/**
+ * Axes that relate to indexes rather than space/time/channel/batch, for example lists of objects.
+ */
 public class IndexAxes {
     abstract static class IndexAxisBase extends AxisBase implements ScaledAxis {
         private final double scale = 1.0;

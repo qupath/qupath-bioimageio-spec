@@ -61,12 +61,13 @@ public interface Axis {
     String getID();
 
     /**
-     * Ensure the parameters of the axis are valid.
+     * Ensure the parameters of the axis are valid, possibly resolving references to other tensors and/or axes.
      *
      * @param tensors Other tensors in the model, in case they are referenced in this axis.
      */
     void validate(List<? extends BaseTensor> tensors);
 
+    // todo: this should ideally not be public
     class AxesDeserializer implements JsonDeserializer<Axis[]> {
         private static final Logger logger = LoggerFactory.getLogger(AxesDeserializer.class);
 

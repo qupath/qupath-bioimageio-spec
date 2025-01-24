@@ -1,19 +1,30 @@
 package qupath.bioimageio.spec;
 
+/**
+ * A file description (link and hash).
+ */
 public class FileDescr {
     private final String source;
-    private final String hashSHA256;
+    private final String hashSha256;
 
-    FileDescr(String source, String hashSHA256) {
+    FileDescr(String source, String hashSha256) {
         this.source = source;
-        this.hashSHA256 = hashSHA256;
+        this.hashSha256 = hashSha256;
     }
 
+    /**
+     * Get the file path/URL
+     * @return the file path/URL
+     */
     public String getSource() {
         return source;
     }
 
-    public String getHashSHA256() {
-        return hashSHA256;
+    /**
+     * Get the SHA256 hash of the file contents
+     * @return the SHA256 hash
+     */
+    public String getHashSha256() {
+        return hashSha256;
     }
 }

@@ -22,6 +22,9 @@ import qupath.bioimageio.spec.tensor.BaseTensor;
 
 import java.util.List;
 
+/**
+ * A list of channels.
+ */
 class ChannelAxis extends AxisBase implements ScaledAxis {
     private final List<String> channel_names;
 

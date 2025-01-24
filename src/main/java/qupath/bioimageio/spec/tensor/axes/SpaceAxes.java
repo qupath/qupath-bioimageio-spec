@@ -22,8 +22,14 @@ import qupath.bioimageio.spec.tensor.BaseTensor;
 
 import java.util.List;
 
+/**
+ * Axes relating to physical space.
+ */
 public class SpaceAxes {
 
+    /**
+     * Possible SI and imperial units for distance in physical space (some more likely to be used than others).
+     */
     public enum SpaceUnit {
         ATTOMETER("attometer"),
         ANGSTROM("angstrom"),

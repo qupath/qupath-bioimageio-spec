@@ -34,7 +34,10 @@ import static qupath.bioimageio.spec.Model.deserializeField;
  */
 public interface Size {
 
-
+    /**
+     * Constant to indicate that this element has no meaningful size for some context.
+     * For example, a fixed size (int value) has no meaningful step value.
+     */
     int NO_SIZE = -1;
 
     /**
@@ -56,8 +59,19 @@ public interface Size {
      */
     int getStep();
 
+    /**
+     * Validate a tensor's size, ensuring that all internal fields are valid and resolving links between tensor objects.
+     * @param tensors Tensors that may be referenced by this Size object.
+     */
     void validate(List<? extends BaseTensor> tensors);
 
+    /**
+     * Deserialize a size object from JSON.
+     * @param context The JSON context.
+     * @param jsonElement the json element to be parsed.
+     * @param scale the numeric scale that may or may not be needed
+     * @return A size parsed from the input json element if possible.
+     */
     static Size deserializeSize(JsonDeserializationContext context, JsonElement jsonElement, JsonElement scale) {
         Logger logger = LoggerFactory.getLogger(Size.class);
         if (jsonElement == null || jsonElement.isJsonNull()) {

@@ -61,84 +61,169 @@ public class Resource {
     @SerializedName("rdf_source")
     String rdfSource;
 
+    /**
+     * Get the version of the resource.
+     * @return A semantic version hopefully, or maybe just an int, or worse, something else...
+     */
     public String getVersion() {
         return version;
     }
 
+    /**
+     * Get the badges for the resource.
+     * @return The badges
+     */
     public List<Badge> getBadges() {
         return toUnmodifiableList(badges);
     }
 
+    /**
+     * Get the citations for the resource.
+     * @return the cite entries.
+     */
     public List<CiteEntry> getCite() {
         return toUnmodifiableList(cite);
     }
 
+    /**
+     * URL or relative path to a markdown file with additional documentation.
+     * The recommended documentation file name is `README.md`. An `.md` suffix is mandatory.
+     * The documentation should include a '[#[#]]# Validation' (sub)section
+     * with details on how to quantitatively validate the model on unseen data.
+     * @return A URL or path.
+     */
     public String getDocumentation() {
         return documentation;
     }
 
+    /**
+     * A human-readable name of this model.
+     * It should be no longer than 64 characters and only contain letter, number, underscore, minus or space characters."""
+     * @return the name
+     */
     public String getName() {
         return name;
     }
 
+    /**
+     * Get the relative path to the resource icon
+     * @return the path to the icon.
+     */
     public String getIcon() {
         return icon;
     }
 
+    /**
+     * Get a link to the git repository for this resource
+     * @return Hopefully a git:// or http(s):// link, but I guess it could be a file://...
+     */
     public String getGitRepo() {
         return gitRepo;
     }
 
+    /**
+     * Get the resource description
+     * @return A string of unknown length or content.
+     */
     public String getDescription() {
         return description;
     }
 
+    /**
+     * Get the version of the bioimage format used for this resource.
+     * There were big changes between 0.4.x and 0.5.x that should mostly
+     * be handled by this library internally, but some behaviour may be
+     * inconsistent.
+     * @return The format as a (hopefully SemVer) string.
+     */
     public String getFormatVersion() {
         return formatVersion;
     }
 
+    /**
+     * A [SPDX license identifier](https://spdx.org/licenses/).
+     * We do not support custom license beyond the SPDX license list.
+     * @return the license
+     */
     public String getLicense() {
         return license;
     }
 
+    /**
+     * Get the source file for the resource
+     * @return a file path or http(s) link potentially
+     */
     public String getSource() {
         return source;
     }
 
+    /**
+     * bioimage.io-wide unique resource identifier assigned by bioimage.io; version **un**specific.
+     * @return the ID
+     */
     public String getID() {
         return id;
     }
 
+    /**
+     * The authors are the creators of the model RDF and the primary points of contact.
+     * @return The authors.
+     */
     public List<Author> getAuthors() {
         return toUnmodifiableList(authors);
     }
 
+    /**
+     * Maintainers of this resource. If not specified `authors` are maintainers and at least some of them should specify their `github_user` name
+     * @return The maintainers
+     */
     public List<Author> getMaintainers() {
         return toUnmodifiableList(maintainers);
     }
 
+    /**
+     * IDs of other bioimage.io resources
+     * @return links
+     */
     public List<String> getLinks() {
         return toUnmodifiableList(links);
     }
 
+    /**
+     * Associated tage
+     * @return the tags
+     */
     public List<String> getTags() {
         return toUnmodifiableList(tags);
     }
 
+    /**
+     * Cover images. Please use an image smaller than 500KB and an aspect ratio width to height of 2:1.
+     * @return links to image files
+     */
     public List<String> getCovers() {
         return toUnmodifiableList(covers);
     }
 
+    /**
+     * file and other attachments
+     * @return attachments
+     */
     public Map<String, ?> getAttachments() {
         return attachments == null ? Collections.emptyMap() : Collections.unmodifiableMap(attachments);
     }
 
-    boolean isNewerThan(ModuleDescriptor.Version version) {
+    boolean isFormatNewerThan(ModuleDescriptor.Version version) {
         return ModuleDescriptor.Version.parse(this.getFormatVersion()).compareTo(version) > 0;
     }
 
-    boolean isNewerThan(String version) {
-        return isNewerThan(ModuleDescriptor.Version.parse(version));
+    /**
+     * Compare a resource's format version to a semantic version
+     * @param version The semantic version we're comparing to
+     * @return Whether the resource's version is newer than this.
+     */
+    public boolean isFormatNewerThan(String version) {
+        return isFormatNewerThan(ModuleDescriptor.Version.parse(version));
     }
 
 

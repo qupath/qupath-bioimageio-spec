@@ -22,18 +22,36 @@ public class Author {
     String name;
     String orcid;
 
+    /**
+     * Get the author's affiliation
+     * @return the affiliation
+     */
     public String getAffiliation() {
         return affiliation;
     }
 
+    /**
+     * Get the GitHub username for this author
+     * @return the GitHub username
+     */
     public String getGitHubUser() {
         return githubUser;
     }
 
+    /**
+     * Get the author's name
+     * @return the name
+     */
     public String getName() {
         return name;
     }
 
+    /**
+     * An <a href="https://support.orcid.org/hc/en-us/sections/360001495313-What-is-ORCID">ORCID ID</a>
+     * in hyphenated groups of 4 digits, <a href="https://support.orcid.org/hc/en-us/articles/360006897674-Structure-of-the-ORCID-Identifier">valid</a>
+     * as per ISO 7064 11,2.
+     * @return The ORCID ID.
+     */
     public String getOrcid() {
         return orcid;
     }
@@ -48,7 +66,7 @@ public class Author {
         return base;
     }
 
-    public static class Deserializer implements JsonDeserializer<Author> {
+    static class Deserializer implements JsonDeserializer<Author> {
 
         @Override
         public Author deserialize(JsonElement json, Type typeOfT, JsonDeserializationContext context)

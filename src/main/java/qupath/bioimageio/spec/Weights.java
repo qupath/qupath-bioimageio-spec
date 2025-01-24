@@ -18,6 +18,9 @@ import java.util.stream.Collectors;
 import static qupath.bioimageio.spec.Model.toUnmodifiableList;
 
 
+/**
+ * Model weights and model weights accessories.
+ */
 public class Weights {
     /**
      * Model weights information for a specific format.
@@ -30,22 +33,49 @@ public class Weights {
         private String parent;
         private String sha256;
 
+        /**
+         * Get the source file or link (http etc.)
+         * @return The source, if present
+         */
         public String getSource() {
             return source;
         }
 
+        /**
+         * Attachments that are specific to this weights entry
+         * @return The attachments. Unclear what these may be.
+         */
         public Map<String, ?> getAttachments() {
             return attachments == null ? Collections.emptyMap() : Collections.unmodifiableMap(attachments);
         }
 
+        /**
+         * The source weights these weights were converted from.
+         * For example, if a model's weights were converted from the `pytorch_state_dict` format to `torchscript`,
+         * The `pytorch_state_dict` weights entry has no `parent` and is the parent of the `torchscript` weights.
+         * All weight entries except one (the initial set of weights resulting from training the model),
+         * need to have this field.
+         * @return The parent
+         */
         public String getParent() {
             return parent;
         }
 
+        /**
+         * Get the SHA of the source file.
+         * @return The SHA256 hash of the file.
+         */
         public String getSha256() {
             return sha256;
         }
 
+        /**
+         * Either the person(s) that have trained this model resulting in the original weights file.
+         * (If this is the initial weights entry, i.e. it does not have a `parent`)
+         * Or the person(s) who have converted the weights to this weights format.
+         * (If this is a child weight, i.e. it has a `parent` field)
+         * @return The authors.
+         */
         public List<Author> getAuthors() {
             return toUnmodifiableList(authors);
         }
@@ -58,7 +88,7 @@ public class Weights {
     }
 
     /**
-     * Enum representing supported model weights.
+     * Enum representing supported model weights. Corresponds to WeightsEntryDescr.
      */
     public enum WeightsEntry {
 
@@ -96,10 +126,18 @@ public class Weights {
         }
     }
 
+
+    /**
+     * A map of weights types (e.g., TensorFlow, ONNX, PyTorch) to model weights.
+     */
     public static class WeightsMap {
 
         Map<WeightsEntry, ModelWeights> map;
 
+        /**
+         * Convert to a map with String keys.
+         * @return A map with string keys and the same values/.
+         */
         public Map<String, ModelWeights> withStringKeys() {
             return map == null ? Collections.emptyMap() : map.entrySet().stream()
                     .collect(Collectors.toMap(e -> e.getKey().toString(), e -> e.getValue()));

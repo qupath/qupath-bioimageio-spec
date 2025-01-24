@@ -21,6 +21,9 @@ import qupath.bioimageio.spec.tensor.BaseTensor;
 
 import java.util.List;
 
+/**
+ * Axes relating to physical time.
+ */
 public class TimeAxes {
 
     abstract static class TimeAxisBase extends AxisBase implements ScaledAxis {
@@ -100,6 +103,9 @@ public class TimeAxes {
         }
     }
 
+    /**
+     * Possible SI units for time.
+     */
     public enum TimeUnit {
         ATTOSECOND,
         CENTISECOND,

@@ -20,6 +20,9 @@ import qupath.bioimageio.spec.tensor.BaseTensor;
 
 import java.util.List;
 
+/**
+ * A fixed axis size. Basically an int with extra steps.
+ */
 public class FixedSize implements Size {
     private final int size;
     public FixedSize(int size) {
