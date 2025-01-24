@@ -12,6 +12,8 @@ public class FileDescr {
         this.hashSha256 = hashSha256;
     }
 
+    static final FileDescr NULL_FILE = new FileDescr("", "");
+
     /**
      * Get the file path/URL
      * @return the file path/URL

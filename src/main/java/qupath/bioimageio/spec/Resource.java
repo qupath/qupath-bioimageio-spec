@@ -26,40 +26,38 @@ import static qupath.bioimageio.spec.Model.toUnmodifiableList;
 public class Resource {
     private static final Logger logger = LoggerFactory.getLogger(Resource.class);
 
-    String formatVersion;
-    List<Author> authors;
-    String description;
-    String documentation;
-
-    String name;
-
-    List<String> tags;
+    private String formatVersion;
+    private List<Author> authors;
+    private String description;
+    private String documentation;
+    private String name;
+    private List<String> tags;
 
     @SerializedName("training_data")
-    Dataset trainingData;
+    private Dataset trainingData;
 
-    String version;
+    private String version;
 
-    Map<String,?> attachments;
-    List<Badge> badges;
-    List<CiteEntry> cite;
+    private Map<String,?> attachments;
+    private List<Badge> badges;
+    private List<CiteEntry> cite;
 
-    List<String> covers;
+    private List<String> covers;
 
     @SerializedName("download_url")
-    String downloadURL;
-    String gitRepo;
-    String icon;
-    String id;
-    String license;
+    private String downloadURL;
+    private String gitRepo;
+    private String icon;
+    private String id;
+    private String license;
 
-    List<String> links;
-    List<Author> maintainers;
+    private List<String> links;
+    private List<Author> maintainers;
 
     private String source;
 
     @SerializedName("rdf_source")
-    String rdfSource;
+    private String rdfSource;
 
     /**
      * Get the version of the resource.

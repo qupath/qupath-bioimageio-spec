@@ -132,7 +132,7 @@ public class Weights {
      */
     public static class WeightsMap {
 
-        Map<WeightsEntry, ModelWeights> map;
+        private Map<WeightsEntry, ModelWeights> map;
 
         /**
          * Convert to a map with String keys.

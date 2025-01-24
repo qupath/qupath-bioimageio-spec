@@ -89,7 +89,11 @@ public abstract class BaseTensor {
         return dataRange == null ? null : dataRange.clone();
     }
 
-    void validate(List<? extends BaseTensor> otherTensors) {
+    /**
+     * Validate a tensor by resolving links between tensors and other parameter settings.
+     * @param otherTensors other tensors that may be linked to by this tensor.
+     */
+    public void validate(List<? extends BaseTensor> otherTensors) {
         if (shape != null) {
             shape.validate(otherTensors);
         }
@@ -104,6 +108,7 @@ public abstract class BaseTensor {
      * Each test tensor has to be a ndarray in the
      * <a href="https://numpy.org/doc/stable/reference/generated/numpy.lib.format.html#module-numpy.lib.format">numpy.lib file format</a>,
      * The file extension must be '.npy'.
+     * This will always be null in 0.4.x models, but shouldn't be in 0.5
      * @return null
      */
     public Optional<FileDescr> getTestTensor() {
@@ -117,6 +122,7 @@ public abstract class BaseTensor {
      * It has to be readable by the <a href="https://imageio.readthedocs.io/en/stable/formats/index.html#supported-formats">imageio library</a>
      * (numpy's `.npy` format is not supported).
      * The image dimensionality has to match the number of axes specified in this tensor description.
+     * This will always be null in 0.4.x models, but may not be in 0.5
      * @return maybe a sample tensor, maybe nothing!
      */
     public Optional<FileDescr> getSampleTensor() {

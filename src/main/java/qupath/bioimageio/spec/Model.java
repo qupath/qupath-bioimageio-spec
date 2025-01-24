@@ -34,9 +34,12 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+
+import static qupath.bioimageio.spec.FileDescr.NULL_FILE;
 
 
 /**
@@ -55,38 +58,38 @@ public class Model extends Resource {
         this.uri = uri;
     }
 
-    URI baseURI;
-    URI uri;
+    private URI baseURI;
+    private URI uri;
 
-    List<InputTensor> inputs;
+    private List<InputTensor> inputs;
 
     @SerializedName("test_inputs")
-    List<String> testInputs;
+    private List<String> testInputs;
     @SerializedName("test_outputs")
-    List<String> testOutputs;
+    private List<String> testOutputs;
 
     // Should be in ISO 8601 format - but preserve string as it is found
-    String timestamp;
+    private String timestamp;
 
-    Weights.WeightsMap weights;
+    private Weights.WeightsMap weights;
 
-    Map<?, ?> config;
+    private Map<?, ?> config;
 
-    List<OutputTensor> outputs;
+    private List<OutputTensor> outputs;
 
     @SerializedName("packaged_by")
-    List<Author> packagedBy;
+    private List<Author> packagedBy;
 
-    ModelParent parent;
+    private ModelParent parent;
 
     // TODO: Handle run_mode properly
     @SerializedName("run_mode")
-    Map<?, ?> runMode;
+    private Map<?, ?> runMode;
 
     @SerializedName("sample_inputs")
-    List<String> sampleInputs;
+    private List<String> sampleInputs;
     @SerializedName("sample_outputs")
-    List<String> sampleOutputs;
+    private List<String> sampleOutputs;
 
 
     /**
@@ -158,9 +161,7 @@ public class Model extends Resource {
                     .setDateFormat("yyyy-MM-dd'T'HH:mm:ss");
 
 
-
             var gson = builder.create();
-
             var json = gson.toJson(map);
 
             return gson.fromJson(json, Model.class);
@@ -320,7 +321,7 @@ public class Model extends Resource {
     public Weights.ModelWeights getWeights(Weights.WeightsEntry key) {
         if (weights == null || key == null)
             return null;
-        return weights.map.getOrDefault(key, null);
+        return weights.getMap().getOrDefault(key, null);
     }
 
     /**
@@ -403,7 +404,7 @@ public class Model extends Resource {
         if (ti == null && isFormatNewerThan("0.5")) {
             ti = inputs.stream()
                     .map(BaseTensor::getTestTensor)
-                    .map(FileDescr::getSource)
+                    .map(fd -> fd.get().getSource())
                     .collect(Collectors.toList());
         }
         return toUnmodifiableList(ti);
@@ -422,7 +423,8 @@ public class Model extends Resource {
         if (to == null && isFormatNewerThan("0.5")) {
             to = outputs.stream()
                     .map(BaseTensor::getTestTensor)
-                    .map(FileDescr::getSource)
+                    .map(ofd -> ofd.flatMap(fd -> Optional.of(fd.getSource())))
+                    .map(Object::toString)
                     .collect(Collectors.toList());
         }
         return toUnmodifiableList(to);
@@ -437,7 +439,7 @@ public class Model extends Resource {
         if (si == null && isFormatNewerThan("0.5")) {
             si = inputs.stream()
                     .map(BaseTensor::getTestTensor)
-                    .map(FileDescr::getSource)
+                    .map(ofd -> ofd.orElse(NULL_FILE).getSource())
                     .collect(Collectors.toList());
         }
         return toUnmodifiableList(si);
@@ -452,7 +454,7 @@ public class Model extends Resource {
         if (so == null && isFormatNewerThan("0.5")) {
             so = outputs.stream()
                     .map(BaseTensor::getTestTensor)
-                    .map(FileDescr::getSource)
+                    .map(ofd -> ofd.orElse(NULL_FILE).getSource())
                     .collect(Collectors.toList());
         }
         return toUnmodifiableList(so);

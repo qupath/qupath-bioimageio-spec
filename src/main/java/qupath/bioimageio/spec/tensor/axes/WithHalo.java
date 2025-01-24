@@ -23,6 +23,7 @@ package qupath.bioimageio.spec.tensor.axes;
  * To document a halo that is already cropped by the model use `size.offset` instead.
  */
 public interface WithHalo {
+
     /**
      * Get the size of the halo for this axis.
      * @return The size of the halo in pixels.

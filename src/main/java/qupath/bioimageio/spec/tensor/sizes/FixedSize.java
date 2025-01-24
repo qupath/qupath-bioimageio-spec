@@ -25,6 +25,11 @@ import java.util.List;
  */
 public class FixedSize implements Size {
     private final int size;
+
+    /**
+     * Create a fixed size instance
+     * @param size The fixed size in pixels.
+     */
     public FixedSize(int size) {
         this.size = size;
     }

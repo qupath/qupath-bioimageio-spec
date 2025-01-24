@@ -16,11 +16,11 @@ import static qupath.bioimageio.spec.Model.deserializeField;
  */
 public class Author {
 
-    String affiliation;
+    private String affiliation;
     @SerializedName("github_user")
-    String githubUser;
-    String name;
-    String orcid;
+    private String githubUser;
+    private String name;
+    private String orcid;
 
     /**
      * Get the author's affiliation

@@ -43,7 +43,7 @@ public class Processing {
     public enum ProcessingMode {FIXED, PER_DATASET, PER_SAMPLE}
 
     private final String name;
-    Map<String, Object> kwargs;
+    private Map<String, Object> kwargs;
 
     Processing(String name) {
         this.name = name;
