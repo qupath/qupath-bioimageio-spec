@@ -26,6 +26,7 @@ import java.lang.reflect.Type;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.IntStream;
 
 /**
@@ -290,7 +291,7 @@ public class Shape {
     }
 
     // todo: this shouldn't be public, but it's in a different package
-    public static class Deserializer implements JsonDeserializer<Shape> {
+    static class Deserializer implements JsonDeserializer<Shape> {
 
         @Override
         public Shape deserialize(JsonElement json, Type typeOfT, JsonDeserializationContext context)

@@ -27,6 +27,7 @@ import qupath.bioimageio.spec.tensor.axes.Axis;
 
 import java.lang.reflect.Type;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Map;
 
 import static qupath.bioimageio.spec.Model.deserializeField;
@@ -47,6 +48,18 @@ public class Processing {
 
     Processing(String name) {
         this.name = name;
+    }
+
+
+    /**
+     * Get the type adapters/deserializers necessary for any Processing objects.
+     * @return A map of type to deserializer for that type.
+     */
+    public static Map<Class<?>, JsonDeserializer<?>> getDeserializers() {
+        Map<Class<?>, JsonDeserializer<?>> map = new HashMap<>();
+        map.put(Processing.class, new ProcessingDeserializer());
+        map.put(ProcessingMode.class, new ProcessingModeDeserializer());
+        return map;
     }
 
     /**
@@ -303,8 +316,7 @@ public class Processing {
 
     }
 
-    // todo: this shouldn't be public, but it's in a different package
-    public static class ProcessingModeDeserializer implements JsonDeserializer<ProcessingMode> {
+    static class ProcessingModeDeserializer implements JsonDeserializer<ProcessingMode> {
         private static final Logger logger = LoggerFactory.getLogger(Processing.class);
         @Override
         public Processing.ProcessingMode deserialize(JsonElement json, Type typeOfT, JsonDeserializationContext context)
@@ -330,8 +342,7 @@ public class Processing {
 
     }
 
-    // todo: this shouldn't be public, but it's in a different package
-    public static class ProcessingDeserializer implements JsonDeserializer<Processing> {
+    static class ProcessingDeserializer implements JsonDeserializer<Processing> {
 
         @Override
         public Processing deserialize(JsonElement json, Type typeOfT, JsonDeserializationContext context)

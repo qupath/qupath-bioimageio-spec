@@ -25,9 +25,6 @@ public abstract class BaseTensor {
     private String id;
     private Shape shape;
 
-    public TensorDataDescription getDataDescription() {
-        return data;
-    }
 
     private TensorDataDescription data;
 
@@ -81,7 +78,7 @@ public abstract class BaseTensor {
 
     /**
      * Tuple `(minimum, maximum)` specifying the allowed range of the data in this tensor.
-     *     If not specified, the full data range that can be expressed in `data_type` is allowed.
+     * If not specified, the full data range that can be expressed in `data_type` is allowed.
      * @return the data range.
      */
     public double[] getDataRange() {
@@ -127,6 +124,14 @@ public abstract class BaseTensor {
      */
     public Optional<FileDescription> getSampleTensor() {
         return Optional.ofNullable(sampleTensor);
+    }
+
+    /**
+     * get the data description object.
+     * @return The data description.
+     */
+    public TensorDataDescription getDataDescription() {
+        return data;
     }
 
 }

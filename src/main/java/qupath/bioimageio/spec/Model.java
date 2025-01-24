@@ -16,10 +16,8 @@ import org.yaml.snakeyaml.constructor.SafeConstructor;
 import qupath.bioimageio.spec.tensor.BaseTensor;
 import qupath.bioimageio.spec.tensor.InputTensor;
 import qupath.bioimageio.spec.tensor.OutputTensor;
-import qupath.bioimageio.spec.tensor.Processing;
-import qupath.bioimageio.spec.tensor.Shape;
 import qupath.bioimageio.spec.tensor.TensorDataDescription;
-import qupath.bioimageio.spec.tensor.axes.Axis;
+import qupath.bioimageio.spec.tensor.Tensors;
 
 import java.io.File;
 import java.io.IOException;
@@ -143,6 +141,8 @@ public class Model extends Resource {
             Yaml yaml = new Yaml(new SafeConstructor(new LoaderOptions()));
             Map<String, ?> map = yaml.load(stream);
 
+
+
             var builder = new GsonBuilder()
                     .serializeSpecialFloatingPointValues()
                     .setPrettyPrinting()
@@ -153,14 +153,12 @@ public class Model extends Resource {
                     .registerTypeAdapter(Weights.WeightsEntry.class, new Weights.WeightsEntryDeserializer())
                     .registerTypeAdapter(Weights.WeightsMap.class, new Weights.WeightsMapDeserializer())
                     .registerTypeAdapter(double[].class, new DoubleArrayDeserializer())
-                    // sub-package stuff
-                    .registerTypeAdapter(Shape.class, new Shape.Deserializer())
-                    .registerTypeAdapter(Processing.class, new Processing.ProcessingDeserializer())
-                    .registerTypeAdapter(Processing.ProcessingMode.class, new Processing.ProcessingModeDeserializer())
-                    .registerTypeAdapter(Axis[].class, new Axis.AxesDeserializer())
-                    .registerTypeAdapter(TensorDataDescription.class, new TensorDataDescription.Deserializer())
                     .setDateFormat("yyyy-MM-dd'T'HH:mm:ss");
 
+            var deserializers = Tensors.getDeserializers();
+            for (var entry: deserializers.entrySet()) {
+                builder.registerTypeAdapter(entry.getKey(), entry.getValue());
+            }
 
             var gson = builder.create();
             var json = gson.toJson(map);
@@ -591,10 +589,5 @@ public class Model extends Resource {
         model.sampleOutputs = deserializeField(context, obj, "sample_outputs", parameterizedListType(String.class), Collections.emptyList());
 
     }
-
-
-
-
-
 
 }
