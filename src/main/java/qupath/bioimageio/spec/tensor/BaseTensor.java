@@ -1,7 +1,7 @@
 package qupath.bioimageio.spec.tensor;
 
 import com.google.gson.annotations.SerializedName;
-import qupath.bioimageio.spec.FileDescr;
+import qupath.bioimageio.spec.FileDescription;
 import qupath.bioimageio.spec.tensor.axes.Axis;
 
 import java.util.Arrays;
@@ -18,9 +18,9 @@ public abstract class BaseTensor {
     @SerializedName("data_type")
     private String dataType;
     @SerializedName("test_tensor")
-    private FileDescr testTensor;
+    private FileDescription testTensor;
     @SerializedName("sample_tensor")
-    private FileDescr sampleTensor;
+    private FileDescription sampleTensor;
     private String name;
     private String id;
     private Shape shape;
@@ -111,7 +111,7 @@ public abstract class BaseTensor {
      * This will always be null in 0.4.x models, but shouldn't be in 0.5
      * @return null
      */
-    public Optional<FileDescr> getTestTensor() {
+    public Optional<FileDescription> getTestTensor() {
         return Optional.ofNullable(testTensor);
     }
 
@@ -125,7 +125,7 @@ public abstract class BaseTensor {
      * This will always be null in 0.4.x models, but may not be in 0.5
      * @return maybe a sample tensor, maybe nothing!
      */
-    public Optional<FileDescr> getSampleTensor() {
+    public Optional<FileDescription> getSampleTensor() {
         return Optional.ofNullable(sampleTensor);
     }
 

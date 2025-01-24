@@ -1,18 +1,18 @@
 package qupath.bioimageio.spec;
 
 /**
- * A file description (link and hash).
+ * A file description (link and hash). Equivalent to FileDescr
  */
-public class FileDescr {
+public class FileDescription {
     private final String source;
     private final String hashSha256;
 
-    FileDescr(String source, String hashSha256) {
+    FileDescription(String source, String hashSha256) {
         this.source = source;
         this.hashSha256 = hashSha256;
     }
 
-    static final FileDescr NULL_FILE = new FileDescr("", "");
+    static final FileDescription NULL_FILE = new FileDescription("", "");
 
     /**
      * Get the file path/URL

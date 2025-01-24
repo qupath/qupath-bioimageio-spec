@@ -39,7 +39,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static qupath.bioimageio.spec.FileDescr.NULL_FILE;
+import static qupath.bioimageio.spec.FileDescription.NULL_FILE;
 
 
 /**
@@ -149,10 +149,11 @@ public class Model extends Resource {
                     .registerTypeAdapter(Model.class, new Model.Deserializer())
                     .registerTypeAdapter(Resource.class, new Resource.Deserializer())
                     .registerTypeAdapter(Dataset.class, new Dataset.Deserializer())
-                    .registerTypeAdapter(double[].class, new DoubleArrayDeserializer())
                     .registerTypeAdapter(Author.class, new Author.Deserializer())
                     .registerTypeAdapter(Weights.WeightsEntry.class, new Weights.WeightsEntryDeserializer())
                     .registerTypeAdapter(Weights.WeightsMap.class, new Weights.WeightsMapDeserializer())
+                    .registerTypeAdapter(double[].class, new DoubleArrayDeserializer())
+                    // sub-package stuff
                     .registerTypeAdapter(Shape.class, new Shape.Deserializer())
                     .registerTypeAdapter(Processing.class, new Processing.ProcessingDeserializer())
                     .registerTypeAdapter(Processing.ProcessingMode.class, new Processing.ProcessingModeDeserializer())
@@ -401,7 +402,7 @@ public class Model extends Resource {
      */
     public List<String> getTestInputs() {
         var ti = testInputs;
-        if (ti == null && isFormatNewerThan("0.5")) {
+        if (ti.isEmpty() && isFormatNewerThan("0.5")) {
             ti = inputs.stream()
                     .map(BaseTensor::getTestTensor)
                     .map(fd -> fd.get().getSource())
@@ -420,7 +421,7 @@ public class Model extends Resource {
      */
     public List<String> getTestOutputs() {
         var to = testOutputs;
-        if (to == null && isFormatNewerThan("0.5")) {
+        if (to.isEmpty() && isFormatNewerThan("0.5")) {
             to = outputs.stream()
                     .map(BaseTensor::getTestTensor)
                     .map(ofd -> ofd.flatMap(fd -> Optional.of(fd.getSource())))
@@ -436,7 +437,7 @@ public class Model extends Resource {
      */
     public List<String> getSampleInputs() {
         var si = sampleInputs;
-        if (si == null && isFormatNewerThan("0.5")) {
+        if (si.isEmpty() && isFormatNewerThan("0.5")) {
             si = inputs.stream()
                     .map(BaseTensor::getTestTensor)
                     .map(ofd -> ofd.orElse(NULL_FILE).getSource())
@@ -451,7 +452,7 @@ public class Model extends Resource {
      */
     public List<String> getSampleOutputs() {
         var so = sampleOutputs;
-        if (so == null && isFormatNewerThan("0.5")) {
+        if (so.isEmpty() && isFormatNewerThan("0.5")) {
             so = outputs.stream()
                     .map(BaseTensor::getTestTensor)
                     .map(ofd -> ofd.orElse(NULL_FILE).getSource())
@@ -459,9 +460,6 @@ public class Model extends Resource {
         }
         return toUnmodifiableList(so);
     }
-
-
-
 
     /**
      * Ensure the input is an unmodifiable list, or empty list if null.
@@ -556,7 +554,6 @@ public class Model extends Resource {
             tensor.validate(tensors);
         }
 
-
         if (model.isFormatNewerThan("0.5.0")) {
             model.testInputs = List.of();
             model.testOutputs = List.of();
@@ -564,8 +561,8 @@ public class Model extends Resource {
         } else {
             // now part of the tensor spec:
             model.testInputs = deserializeField(context, obj, "test_inputs", parameterizedListType(String.class), doStrict);
-            // now part of the tensor spec:
             model.testOutputs = deserializeField(context, obj, "test_outputs", parameterizedListType(String.class), doStrict);
+
             // removed...?
             model.timestamp = deserializeField(context, obj, "timestamp", String.class, doStrict);
         }
@@ -592,6 +589,7 @@ public class Model extends Resource {
 
         model.sampleInputs = deserializeField(context, obj, "sample_inputs", parameterizedListType(String.class), Collections.emptyList());
         model.sampleOutputs = deserializeField(context, obj, "sample_outputs", parameterizedListType(String.class), Collections.emptyList());
+
     }
 
 

@@ -207,8 +207,8 @@ public class Shape {
         private double[] scale;
 
         /**
-         * Get the reference tensor
-         * @return the reference tensor.
+         * Get the reference tensor used to define this tensor shape.
+         * @return the reference tensor ID.
          */
         public String getReferenceTensor() {
             return referenceTensor;
