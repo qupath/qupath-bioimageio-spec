@@ -34,65 +34,6 @@ public class Tensors {
         return map;
     }
 
-    static class TensorDataDescriptionDeserializer implements JsonDeserializer<qupath.bioimageio.spec.tensor.TensorDataDescription> {
-
-        @Override
-        public qupath.bioimageio.spec.tensor.TensorDataDescription deserialize(JsonElement jsonElement, Type type, JsonDeserializationContext context) throws JsonParseException {
-            Logger logger = LoggerFactory.getLogger(qupath.bioimageio.spec.tensor.TensorDataDescription.class);
-            if (jsonElement.isJsonNull()) {
-                return null;
-            }
-            if (jsonElement.isJsonObject()) {
-                JsonObject jsonObject = jsonElement.getAsJsonObject();
-                if (jsonObject.get("values") != null) {
-                    JsonArray vals = jsonObject.get("values").getAsJsonArray();
-                    List<Object> values = new ArrayList<>();
-                    for (var val : vals) {
-                        if (val instanceof JsonPrimitive) {
-                            var prim = val.getAsJsonPrimitive();
-                            if (prim.isNumber()) {
-                                values.add(prim.getAsNumber());
-                            }
-                            if (prim.isBoolean()) {
-                                values.add(prim.getAsBoolean());
-                            }
-                            if (prim.isString()) {
-                                values.add(prim.getAsString());
-                            }
-                        }
-                    }
-                    return new NominalOrOrdinalDataDescription(
-                            qupath.bioimageio.spec.tensor.Tensors.NominalOrOrdinalDType.valueOf(jsonObject.get("type").getAsString().toUpperCase()),
-                            values
-                    );
-                }
-                var t = jsonObject.get("type");
-                var r = jsonObject.get("range");
-                List<Optional<Float>> range;
-                if (r == null) {
-                    range = List.of(Optional.empty(), Optional.empty());
-                } else {
-                    range = r.getAsJsonArray().asList().stream()
-                            .map(JsonElement::getAsFloat)
-                            .map(Optional::of)
-                            .collect(Collectors.toList());
-                }
-                JsonElement unit = jsonObject.get("unit");
-                JsonElement scale = jsonObject.get("scale");
-                JsonElement offset = jsonObject.get("offset");
-                return new IntervalOrRatioDataDescription(
-                        IntervalOrRatioDType.valueOf((t != null ? t.getAsString(): "float32").toUpperCase()),
-                        range,
-                        unit != null ? unit.getAsString() : "abitrary unit",
-                        scale != null ? scale.getAsFloat() :  1.0f,
-                        offset != null ? offset.getAsFloat() :  1.0f
-                );
-            }
-            logger.warn("Unknown data description! Returning null");
-            return null;
-        }
-    }
-
 
     /**
      * A description of the possible discrete data values in a tensor.
@@ -232,5 +173,66 @@ public class Tensors {
         INT64,
         BOOL
     }
+
+
+    static class TensorDataDescriptionDeserializer implements JsonDeserializer<qupath.bioimageio.spec.tensor.TensorDataDescription> {
+
+        @Override
+        public qupath.bioimageio.spec.tensor.TensorDataDescription deserialize(JsonElement jsonElement, Type type, JsonDeserializationContext context) throws JsonParseException {
+            Logger logger = LoggerFactory.getLogger(qupath.bioimageio.spec.tensor.TensorDataDescription.class);
+            if (jsonElement.isJsonNull()) {
+                return null;
+            }
+            if (jsonElement.isJsonObject()) {
+                JsonObject jsonObject = jsonElement.getAsJsonObject();
+                if (jsonObject.get("values") != null) {
+                    JsonArray vals = jsonObject.get("values").getAsJsonArray();
+                    List<Object> values = new ArrayList<>();
+                    for (var val : vals) {
+                        if (val instanceof JsonPrimitive) {
+                            var prim = val.getAsJsonPrimitive();
+                            if (prim.isNumber()) {
+                                values.add(prim.getAsNumber());
+                            }
+                            if (prim.isBoolean()) {
+                                values.add(prim.getAsBoolean());
+                            }
+                            if (prim.isString()) {
+                                values.add(prim.getAsString());
+                            }
+                        }
+                    }
+                    return new NominalOrOrdinalDataDescription(
+                            qupath.bioimageio.spec.tensor.Tensors.NominalOrOrdinalDType.valueOf(jsonObject.get("type").getAsString().toUpperCase()),
+                            values
+                    );
+                }
+                var t = jsonObject.get("type");
+                var r = jsonObject.get("range");
+                List<Optional<Float>> range;
+                if (r == null) {
+                    range = List.of(Optional.empty(), Optional.empty());
+                } else {
+                    range = r.getAsJsonArray().asList().stream()
+                            .map(JsonElement::getAsFloat)
+                            .map(Optional::of)
+                            .collect(Collectors.toList());
+                }
+                JsonElement unit = jsonObject.get("unit");
+                JsonElement scale = jsonObject.get("scale");
+                JsonElement offset = jsonObject.get("offset");
+                return new IntervalOrRatioDataDescription(
+                        IntervalOrRatioDType.valueOf((t != null ? t.getAsString(): "float32").toUpperCase()),
+                        range,
+                        unit != null ? unit.getAsString() : "abitrary unit",
+                        scale != null ? scale.getAsFloat() :  1.0f,
+                        offset != null ? offset.getAsFloat() :  1.0f
+                );
+            }
+            logger.warn("Unknown data description! Returning null");
+            return null;
+        }
+    }
+
 
 }

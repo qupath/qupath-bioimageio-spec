@@ -17,7 +17,6 @@
 package qupath.bioimageio.spec.tensor.sizes;
 
 import com.google.gson.JsonParseException;
-import com.google.gson.annotations.SerializedName;
 import qupath.bioimageio.spec.tensor.axes.ScaledAxis;
 import qupath.bioimageio.spec.tensor.BaseTensor;
 
@@ -31,22 +30,19 @@ import java.util.List;
  */
 public class ReferencedSize implements Size {
     private volatile String thisID;
-    @SerializedName("axis_id")
-    private final String refID;
-    @SerializedName("tensor_id")
-    private final String tensorID;
+    private final String axisId;
+    private final String tensorId;
     private final int offset;
     private final double scale;
-
     private volatile ScaledAxis referenceAxis;
 
-    ReferencedSize(String refID, String tensorID) {
-        this(refID, tensorID, 1, 0);
+    ReferencedSize(String axisId, String tensorId) {
+        this(axisId, tensorId, 1, 0);
     }
 
-    ReferencedSize(String refID, String tensorID, double scale, int offset) {
-        this.refID = refID;
-        this.tensorID = tensorID;
+    ReferencedSize(String axisId, String tensorId, double scale, int offset) {
+        this.axisId = axisId;
+        this.tensorId = tensorId;
         this.scale = scale;
         this.offset = offset;
     }
@@ -68,13 +64,13 @@ public class ReferencedSize implements Size {
 
     @Override
     public void validate(List<? extends BaseTensor> tensors) {
-        var tensor = tensors.stream().filter(t -> t.getId().equals(tensorID)).findFirst().orElse(null);
+        var tensor = tensors.stream().filter(t -> t.getId().equals(tensorId)).findFirst().orElse(null);
         if (tensor == null) {
-            throw new JsonParseException("Cannot find reference tensor " + tensorID);
+            throw new JsonParseException("Cannot find reference tensor " + tensorId);
         }
-        ScaledAxis axis = (ScaledAxis) Arrays.stream(tensor.getAxes()).filter(ax -> ax.getID().equalsIgnoreCase(refID)).findFirst().orElse(null);
+        ScaledAxis axis = (ScaledAxis) Arrays.stream(tensor.getAxes()).filter(ax -> ax.getID().equalsIgnoreCase(axisId)).findFirst().orElse(null);
         if (axis == null) {
-            throw new JsonParseException("Cannot find reference axis " + refID);
+            throw new JsonParseException("Cannot find reference axis " + axisId);
         }
         this.referenceAxis = axis;
     }

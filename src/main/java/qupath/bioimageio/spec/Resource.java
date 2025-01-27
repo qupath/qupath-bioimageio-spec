@@ -4,7 +4,6 @@ import com.google.gson.JsonDeserializationContext;
 import com.google.gson.JsonDeserializer;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import com.google.gson.annotations.SerializedName;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -33,7 +32,6 @@ public class Resource {
     private String name;
     private List<String> tags;
 
-    @SerializedName("training_data")
     private Dataset trainingData;
 
     private String version;
@@ -44,7 +42,6 @@ public class Resource {
 
     private List<String> covers;
 
-    @SerializedName("download_url")
     private String downloadURL;
     private String gitRepo;
     private String icon;
@@ -56,7 +53,6 @@ public class Resource {
 
     private String source;
 
-    @SerializedName("rdf_source")
     private String rdfSource;
 
     /**
@@ -223,7 +219,6 @@ public class Resource {
     public boolean isFormatNewerThan(String version) {
         return isFormatNewerThan(ModuleDescriptor.Version.parse(version));
     }
-
 
     static class Deserializer implements JsonDeserializer<Resource> {
 

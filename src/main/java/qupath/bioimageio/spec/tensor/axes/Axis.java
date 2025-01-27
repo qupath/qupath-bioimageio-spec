@@ -59,10 +59,4 @@ public interface Axis {
      */
     void validate(List<? extends BaseTensor> tensors);
 
-
-
-    // todo: this should ideally not be public
-
-
-
 }

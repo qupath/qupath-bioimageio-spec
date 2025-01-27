@@ -1,12 +1,12 @@
 package qupath.bioimageio.spec;
 
+import com.google.gson.FieldNamingPolicy;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonDeserializationContext;
 import com.google.gson.JsonDeserializer;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
-import com.google.gson.annotations.SerializedName;
 import com.google.gson.reflect.TypeToken;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -16,7 +16,6 @@ import org.yaml.snakeyaml.constructor.SafeConstructor;
 import qupath.bioimageio.spec.tensor.BaseTensor;
 import qupath.bioimageio.spec.tensor.InputTensor;
 import qupath.bioimageio.spec.tensor.OutputTensor;
-import qupath.bioimageio.spec.tensor.TensorDataDescription;
 import qupath.bioimageio.spec.tensor.Tensors;
 
 import java.io.File;
@@ -61,9 +60,7 @@ public class Model extends Resource {
 
     private List<InputTensor> inputs;
 
-    @SerializedName("test_inputs")
     private List<String> testInputs;
-    @SerializedName("test_outputs")
     private List<String> testOutputs;
 
     // Should be in ISO 8601 format - but preserve string as it is found
@@ -75,18 +72,14 @@ public class Model extends Resource {
 
     private List<OutputTensor> outputs;
 
-    @SerializedName("packaged_by")
     private List<Author> packagedBy;
 
     private ModelParent parent;
 
     // TODO: Handle run_mode properly
-    @SerializedName("run_mode")
     private Map<?, ?> runMode;
 
-    @SerializedName("sample_inputs")
     private List<String> sampleInputs;
-    @SerializedName("sample_outputs")
     private List<String> sampleOutputs;
 
 
@@ -146,6 +139,7 @@ public class Model extends Resource {
             var builder = new GsonBuilder()
                     .serializeSpecialFloatingPointValues()
                     .setPrettyPrinting()
+                    .setFieldNamingPolicy(FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES) // convert snake case to camel case
                     .registerTypeAdapter(Model.class, new Model.Deserializer())
                     .registerTypeAdapter(Resource.class, new Resource.Deserializer())
                     .registerTypeAdapter(Dataset.class, new Dataset.Deserializer())
@@ -168,116 +162,6 @@ public class Model extends Resource {
             throw new IOException(e);
         }
     }
-
-
-    /**
-     * List of file names that may contain the model.
-     * Names should be checked in order, with preference given to the first that is found.
-     */
-    static final List<String> MODEL_NAMES = List.of("model.yaml", "model.yml", "rdf.yaml", "rdf.yml");
-
-    static Path findModelRdf(Path path) throws IOException {
-        return findRdf(path, MODEL_NAMES);
-    }
-
-    private static Path findRdf(Path path, Collection<String> names) throws IOException {
-        if (isYamlPath(path)) {
-            if (names.isEmpty())
-                return path;
-            else {
-                var name = path.getFileName().toString().toLowerCase();
-                if (names.contains(name) || name.startsWith("model") || name.startsWith("rdf"))
-                    return path;
-                return null;
-            }
-        }
-
-
-        if (Files.isDirectory(path)) {
-            // Check directory
-            try (Stream<Path> pathStream = Files.list(path)) {
-                List<Path> yamlFiles = pathStream.filter(Model::isYamlPath).collect(Collectors.toList());
-                if (yamlFiles.isEmpty())
-                    return null;
-                if (yamlFiles.size() == 1)
-                    return yamlFiles.get(0);
-                for (var name : MODEL_NAMES) {
-                    var modelFile = yamlFiles.stream()
-                            .filter(p -> p.getFileName().toString().equalsIgnoreCase(name))
-                            .findFirst()
-                            .orElse(null);
-                    if (modelFile != null)
-                        return modelFile;
-                }
-            }
-        } else if (path.toAbsolutePath().toString().toLowerCase().endsWith(".zip")) {
-            // Check zip file
-            try (var fs = FileSystems.newFileSystem(path, null)) {
-                for (var dir : fs.getRootDirectories()) {
-                    for (var name : MODEL_NAMES) {
-                        var p = dir.resolve(name);
-                        if (Files.exists(p))
-                            return p;
-                    }
-                }
-            }
-        }
-        return null;
-    }
-
-
-    static boolean isYamlPath(Path path) {
-        if (Files.isRegularFile(path)) {
-            var name = path.getFileName().toString().toLowerCase();
-            return name.endsWith(".yaml") || name.endsWith(".yml");
-        }
-        return false;
-    }
-
-    static Type parameterizedListType(Type typeOfList) {
-        return TypeToken.getParameterized(List.class, typeOfList).getType();
-    }
-    /**
-     * Deal with the awkwardness of -inf and inf instead of .inf and .inf.
-     * This otherwise caused several failures for data range.
-     */
-    static class DoubleArrayDeserializer implements JsonDeserializer<double[]> {
-        private static final Logger logger = LoggerFactory.getLogger(DoubleArrayDeserializer.class);
-
-        @Override
-        public double[] deserialize(JsonElement json, Type typeOfT, JsonDeserializationContext context)
-                throws JsonParseException {
-
-            if (json.isJsonNull())
-                return null;
-            if (json.isJsonArray()) {
-                List<Double> values = new ArrayList<>();
-                for (var jsonVal : json.getAsJsonArray()) {
-                    if (jsonVal.isJsonNull()) {
-                        logger.warn("Found null when expecting a double - will replace with NaN");
-                        values.add(Double.NaN);
-                        continue;
-                    }
-                    var jsonPrimitive = jsonVal.getAsJsonPrimitive();
-                    if (jsonPrimitive.isNumber()) {
-                        values.add(jsonPrimitive.getAsDouble());
-                    } else {
-                        var s = jsonPrimitive.getAsString();
-                        if ("inf".equalsIgnoreCase(s))
-                            values.add(Double.POSITIVE_INFINITY);
-                        else if ("-inf".equalsIgnoreCase(s))
-                            values.add(Double.NEGATIVE_INFINITY);
-                        else
-                            values.add(Double.parseDouble(s));
-                    }
-                }
-                return values.stream().mapToDouble(d -> d).toArray();
-            } else
-                throw new JsonParseException("Can't parse data range from " + json);
-        }
-    }
-
-
 
     /**
      * Get the base URI, providing the location of the model.
@@ -403,7 +287,7 @@ public class Model extends Resource {
         if (ti.isEmpty() && isFormatNewerThan("0.5")) {
             ti = inputs.stream()
                     .map(BaseTensor::getTestTensor)
-                    .map(fd -> fd.get().getSource())
+                    .map(fd -> fd.get().source())
                     .collect(Collectors.toList());
         }
         return toUnmodifiableList(ti);
@@ -422,7 +306,7 @@ public class Model extends Resource {
         if (to.isEmpty() && isFormatNewerThan("0.5")) {
             to = outputs.stream()
                     .map(BaseTensor::getTestTensor)
-                    .map(ofd -> ofd.flatMap(fd -> Optional.of(fd.getSource())))
+                    .map(ofd -> ofd.flatMap(fd -> Optional.of(fd.source())))
                     .map(Object::toString)
                     .collect(Collectors.toList());
         }
@@ -438,7 +322,7 @@ public class Model extends Resource {
         if (si.isEmpty() && isFormatNewerThan("0.5")) {
             si = inputs.stream()
                     .map(BaseTensor::getTestTensor)
-                    .map(ofd -> ofd.orElse(NULL_FILE).getSource())
+                    .map(ofd -> ofd.orElse(NULL_FILE).source())
                     .collect(Collectors.toList());
         }
         return toUnmodifiableList(si);
@@ -453,7 +337,7 @@ public class Model extends Resource {
         if (so.isEmpty() && isFormatNewerThan("0.5")) {
             so = outputs.stream()
                     .map(BaseTensor::getTestTensor)
-                    .map(ofd -> ofd.orElse(NULL_FILE).getSource())
+                    .map(ofd -> ofd.orElse(NULL_FILE).source())
                     .collect(Collectors.toList());
         }
         return toUnmodifiableList(so);
@@ -503,6 +387,116 @@ public class Model extends Resource {
         }
         return ensureUnmodifiable(defaultValue);
     }
+
+    /**
+     * List of file names that may contain the model.
+     * Names should be checked in order, with preference given to the first that is found.
+     */
+    static final List<String> MODEL_NAMES = List.of("model.yaml", "model.yml", "rdf.yaml", "rdf.yml");
+
+    static Path findModelRdf(Path path) throws IOException {
+        return findRdf(path, MODEL_NAMES);
+    }
+
+    private static Path findRdf(Path path, Collection<String> names) throws IOException {
+        if (isYamlPath(path)) {
+            if (names.isEmpty())
+                return path;
+            else {
+                var name = path.getFileName().toString().toLowerCase();
+                if (names.contains(name) || name.startsWith("model") || name.startsWith("rdf"))
+                    return path;
+                return null;
+            }
+        }
+
+
+        if (Files.isDirectory(path)) {
+            // Check directory
+            try (Stream<Path> pathStream = Files.list(path)) {
+                List<Path> yamlFiles = pathStream.filter(Model::isYamlPath).collect(Collectors.toList());
+                if (yamlFiles.isEmpty())
+                    return null;
+                if (yamlFiles.size() == 1)
+                    return yamlFiles.get(0);
+                for (var name : MODEL_NAMES) {
+                    var modelFile = yamlFiles.stream()
+                            .filter(p -> p.getFileName().toString().equalsIgnoreCase(name))
+                            .findFirst()
+                            .orElse(null);
+                    if (modelFile != null)
+                        return modelFile;
+                }
+            }
+        } else if (path.toAbsolutePath().toString().toLowerCase().endsWith(".zip")) {
+            // Check zip file
+            try (var fs = FileSystems.newFileSystem(path, (ClassLoader) null)) {
+                for (var dir : fs.getRootDirectories()) {
+                    for (var name : MODEL_NAMES) {
+                        var p = dir.resolve(name);
+                        if (Files.exists(p))
+                            return p;
+                    }
+                }
+            }
+        }
+        return null;
+    }
+
+
+    static boolean isYamlPath(Path path) {
+        if (Files.isRegularFile(path)) {
+            var name = path.getFileName().toString().toLowerCase();
+            return name.endsWith(".yaml") || name.endsWith(".yml");
+        }
+        return false;
+    }
+
+    static Type parameterizedListType(Type typeOfList) {
+        return TypeToken.getParameterized(List.class, typeOfList).getType();
+    }
+    /**
+     * Deal with the awkwardness of -inf and inf instead of .inf and .inf.
+     * This otherwise caused several failures for data range.
+     */
+    static class DoubleArrayDeserializer implements JsonDeserializer<double[]> {
+        private static final Logger logger = LoggerFactory.getLogger(DoubleArrayDeserializer.class);
+
+        @Override
+        public double[] deserialize(JsonElement json, Type typeOfT, JsonDeserializationContext context)
+                throws JsonParseException {
+
+            if (json.isJsonNull())
+                return null;
+            if (json.isJsonArray()) {
+                List<Double> values = new ArrayList<>();
+                for (var jsonVal : json.getAsJsonArray()) {
+                    if (jsonVal.isJsonNull()) {
+                        logger.warn("Found null when expecting a double - will replace with NaN");
+                        values.add(Double.NaN);
+                        continue;
+                    }
+                    var jsonPrimitive = jsonVal.getAsJsonPrimitive();
+                    if (jsonPrimitive.isNumber()) {
+                        values.add(jsonPrimitive.getAsDouble());
+                    } else {
+                        var s = jsonPrimitive.getAsString();
+                        if ("inf".equalsIgnoreCase(s))
+                            values.add(Double.POSITIVE_INFINITY);
+                        else if ("-inf".equalsIgnoreCase(s))
+                            values.add(Double.NEGATIVE_INFINITY);
+                        else
+                            values.add(Double.parseDouble(s));
+                    }
+                }
+                return values.stream().mapToDouble(d -> d).toArray();
+            } else
+                throw new JsonParseException("Can't parse data range from " + json);
+        }
+    }
+
+
+
     /**
      * Minor optimization - ensure any lists, maps or sets are unmodifiable at this point,
      * to avoid generating new unmodifiable wrappers later.

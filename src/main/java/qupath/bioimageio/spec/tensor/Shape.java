@@ -34,6 +34,8 @@ import java.util.stream.IntStream;
  */
 public class Shape {
 
+    protected int[] shape;
+
     /**
      * Create a shape array for a given axes.
      * The axes are expected to a string containing only the characters
@@ -66,8 +68,6 @@ public class Shape {
         return array;
     }
 
-
-    protected int[] shape;
 
     /**
      * Get the shape, if this is defined explicitly.
@@ -290,7 +290,6 @@ public class Shape {
         }
     }
 
-    // todo: this shouldn't be public, but it's in a different package
     static class Deserializer implements JsonDeserializer<Shape> {
 
         @Override
