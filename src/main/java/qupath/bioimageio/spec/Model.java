@@ -90,8 +90,8 @@ public class Model extends Resource {
      * @return The parsed model.
      * @throws IOException if the model cannot be found or parsed
      */
-    public static Model parseModel(File file) throws IOException {
-        return parseModel(file.toPath());
+    public static Model parse(File file) throws IOException {
+        return parse(file.toPath());
     }
 
     /**
@@ -101,15 +101,14 @@ public class Model extends Resource {
      * @return The parsed model.
      * @throws IOException if the model cannot be found or parsed
      */
-    public static Model parseModel(Path path) throws IOException {
-
+    public static Model parse(Path path) throws IOException {
         var pathYaml = findModelRdf(path);
         if (pathYaml == null) {
             throw new IOException("Can't find rdf.yaml from " + path);
         }
 
         try (var stream = Files.newInputStream(pathYaml)) {
-            var model = parseModel(stream);
+            var model = parse(stream);
             if (model != null) {
                 model.setBaseURI(pathYaml.getParent().toUri());
                 model.setUri(pathYaml.toUri());
@@ -126,8 +125,7 @@ public class Model extends Resource {
      * @return The parsed model.
      * @throws IOException if the model cannot be found or parsed
      */
-    public static Model parseModel(InputStream stream) throws IOException {
-
+    public static Model parse(InputStream stream) throws IOException {
         try {
             // Important to use SafeConstructor to restrict potential classes that might be initiated
             // Note: we can't support -inf or inf (but can support -.inf or .inf)

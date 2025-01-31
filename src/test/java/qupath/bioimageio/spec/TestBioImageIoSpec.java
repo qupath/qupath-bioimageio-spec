@@ -20,7 +20,7 @@ import java.util.stream.Collectors;
 import static org.junit.jupiter.api.Assertions.*;
 import static qupath.bioimageio.spec.Model.findModelRdf;
 import static qupath.bioimageio.spec.Model.isYamlPath;
-import static qupath.bioimageio.spec.Model.parseModel;
+import static qupath.bioimageio.spec.Model.parse;
 import static qupath.bioimageio.spec.tensor.Shape.createShapeArray;
 
 /**
@@ -81,7 +81,7 @@ class TestBioImageIoSpec {
 	void testParseSpec(Path path) {
 		try {
 			logger.info("Attempting to parse {}", path);
-			var model = parseModel(path);
+			var model = Model.parse(path);
 			assertNotNull(model);
 			if (Files.isDirectory(path))
 				assertEquals(path.toUri(), model.getBaseURI());
