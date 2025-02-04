@@ -109,11 +109,11 @@ public class SpaceAxes {
         }
     }
 
-    static class SpaceInputAxis extends SpaceAxisBase {
+    static class SpaceAxis extends SpaceAxisBase {
         private final Size size;
         private final boolean concatenable = false;
 
-        SpaceInputAxis(String id, String description, String unit, double scale, Size size) {
+        SpaceAxis(String id, String description, String unit, double scale, Size size) {
             super(id, description, unit.isEmpty() ? "NO_UNIT" : unit, scale);
             this.size = size;
         }
@@ -129,30 +129,13 @@ public class SpaceAxes {
         }
     }
 
-    static class SpaceOutputAxis extends SpaceAxisBase {
-        private final Size size;
 
-        SpaceOutputAxis(String id, String description, String unit, double scale, Size size) {
-            super(id, description, unit, scale);
-            this.size = size;
-        }
 
-        @Override
-        public Size getSize() {
-            return this.size;
-        }
-
-        @Override
-        public void validate(List<? extends BaseTensor> tensors) {
-            getSize().validate(tensors);
-        }
-    }
-
-    static class SpaceOutputAxisWithHalo extends SpaceOutputAxis implements WithHalo {
+    static class SpaceAxisWithHalo extends SpaceAxis implements WithHalo {
         private ReferencedSize size;
         private final int halo;
 
-        SpaceOutputAxisWithHalo(String id, String description, String unit, double scale, Size size, int halo) {
+        SpaceAxisWithHalo(String id, String description, String unit, double scale, Size size, int halo) {
             super(id, description, unit, scale, size);
             this.halo = halo;
         }

@@ -44,11 +44,11 @@ public class IndexAxes {
         }
     }
 
-    static class IndexInputAxis extends IndexAxisBase {
+    static class IndexAxis extends IndexAxisBase {
         private final Size size;
         private final boolean concatenable = false;
 
-        IndexInputAxis(String id, String description, Size size) {
+        IndexAxis(String id, String description, Size size) {
             super(id, description);
             this.size = size;
         }
@@ -63,21 +63,4 @@ public class IndexAxes {
         }
     }
 
-    static class IndexOutputAxis extends IndexAxisBase {
-        private Size size;
-
-        IndexOutputAxis(String id, String description) {
-            super(id, description);
-        }
-
-        @Override
-        public Size getSize() {
-            return size;
-        }
-
-        @Override
-        public void validate(List<? extends BaseTensor> tensors) {
-            size.validate(tensors);
-        }
-    }
 }

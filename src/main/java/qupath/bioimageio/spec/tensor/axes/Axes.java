@@ -55,7 +55,7 @@ public class Axes {
                 }
                 return axes;
             }
-            // todo: input or output???
+            // todo: handle separate input or output axis types if needed
             if (jsonElement.isJsonArray()) {
                 var arr = jsonElement.getAsJsonArray();
                 Axis[] axes = new Axis[arr.size()];
@@ -70,44 +70,37 @@ public class Axes {
                     var id = deserializeField(context, oj, "id", String.class, "");
                     var desc = deserializeField(context, oj, "description", String.class, "");
                     Size size = deserializeSize(context, oj.get("size"), oj.get("scale"));
-                    switch (oj.get("type").getAsString()) {
-                        case "time":
-                            axes[i] = new TimeAxes.TimeInputAxis(
-                                    id, desc,
-                                    TimeAxes.TimeUnit.valueOf(oj.get("unit").getAsString().toUpperCase()),
-                                    oj.get("scale").getAsDouble(),
-                                    size
-                            );
-                            break;
-                        case "channel":
+                    axes[i] = switch (oj.get("type").getAsString()) {
+                        case "time" -> new TimeAxes.TimeAxis(
+                                id, desc,
+                                TimeAxes.TimeUnit.valueOf(oj.get("unit").getAsString().toUpperCase()),
+                                oj.get("scale").getAsDouble(),
+                                size
+                        );
+                        case "channel" -> {
                             var namesJSON = oj.get("channel_names").getAsJsonArray();
                             List<String> names = new LinkedList<>();
                             for (JsonElement n : namesJSON) {
                                 names.add(n.getAsString());
                             }
-                            axes[i] = new ChannelAxis(
+                            yield new ChannelAxis(
                                     id, desc,
                                     names
                             );
-                            break;
-                        case "index":
-                            axes[i] = new IndexAxes.IndexInputAxis(id, desc, size);
-                            break;
-                        case "space":
-                            axes[i] = new SpaceAxes.SpaceInputAxis(
-                                    id, desc,
-                                    deserializeField(context, oj, "unit", String.class, ""),
-                                    deserializeField(context, oj, "scale", Double.class, 1.0),
-                                    size
-                            );
-                            break;
-                        case "batch":
-                            axes[i] = new BatchAxis(id, desc, deserializeField(context, oj, "size", Integer.class, 1));
-                            break;
-                        default:
+                        }
+                        case "index" -> new IndexAxes.IndexAxis(id, desc, size);
+                        case "space" -> new SpaceAxes.SpaceAxis(
+                                id, desc,
+                                deserializeField(context, oj, "unit", String.class, ""),
+                                deserializeField(context, oj, "scale", Double.class, 1.0),
+                                size
+                        );
+                        case "batch" -> new BatchAxis(id, desc, deserializeField(context, oj, "size", Integer.class, 1));
+                        default -> {
                             logger.error("Unknown object {}", oj);
-                            axes[i] = null;
-                    }
+                            yield null;
+                        }
+                    };
                 }
                 return axes;
             }
