@@ -51,10 +51,10 @@ public class TimeAxes {
         }
     }
 
-    static class TimeInputAxis extends TimeAxisBase {
+    static class TimeAxis extends TimeAxisBase {
         private final Size size;
 
-        TimeInputAxis(String id, String description, TimeUnit unit, double scale, Size size) {
+        TimeAxis(String id, String description, TimeUnit unit, double scale, Size size) {
             super(id, description, unit, scale);
             this.size = size;
         }
@@ -70,29 +70,10 @@ public class TimeAxes {
         }
     }
 
-    static class TimeOutputAxis extends TimeAxisBase {
-        private final Size size;
-
-        TimeOutputAxis(String id, String description, TimeUnit unit, double scale, Size size) {
-            super(id, description, unit, scale);
-            this.size = size;
-        }
-
-        @Override
-        public Size getSize() {
-            return size;
-        }
-
-        @Override
-        public void validate(List<? extends BaseTensor> tensors) {
-            getSize().validate(tensors);
-        }
-    }
-
-    static class TimeOutputAxisWithHalo extends TimeOutputAxis implements WithHalo {
+    static class TimeAxisWithHalo extends TimeAxis implements WithHalo {
         private final int halo;
 
-        TimeOutputAxisWithHalo(String id, String description, TimeUnit unit, double scale, Size size, int halo) {
+        TimeAxisWithHalo(String id, String description, TimeUnit unit, double scale, Size size, int halo) {
             super(id, description, unit, scale, size);
             this.halo = halo;
         }
