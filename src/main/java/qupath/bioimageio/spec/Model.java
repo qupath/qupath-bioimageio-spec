@@ -31,7 +31,6 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -285,7 +284,7 @@ public class Model extends Resource {
         if (ti.isEmpty() && isFormatNewerThan("0.5")) {
             ti = inputs.stream()
                     .map(BaseTensor::getTestTensor)
-                    .map(fd -> fd.get().source())
+                    .map(ofd -> ofd.orElse(NULL_FILE).source())
                     .collect(Collectors.toList());
         }
         return toUnmodifiableList(ti);
@@ -304,8 +303,7 @@ public class Model extends Resource {
         if (to.isEmpty() && isFormatNewerThan("0.5")) {
             to = outputs.stream()
                     .map(BaseTensor::getTestTensor)
-                    .map(ofd -> ofd.flatMap(fd -> Optional.of(fd.source())))
-                    .map(Object::toString)
+                    .map(ofd -> ofd.orElse(NULL_FILE).source())
                     .collect(Collectors.toList());
         }
         return toUnmodifiableList(to);
@@ -412,7 +410,7 @@ public class Model extends Resource {
         if (Files.isDirectory(path)) {
             // Check directory
             try (Stream<Path> pathStream = Files.list(path)) {
-                List<Path> yamlFiles = pathStream.filter(Model::isYamlPath).collect(Collectors.toList());
+                List<Path> yamlFiles = pathStream.filter(Model::isYamlPath).toList();
                 if (yamlFiles.isEmpty())
                     return null;
                 if (yamlFiles.size() == 1)
