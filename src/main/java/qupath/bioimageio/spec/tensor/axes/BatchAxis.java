@@ -23,7 +23,7 @@ import qupath.bioimageio.spec.tensor.BaseTensor;
 import java.util.List;
 
 /**
- * A base Batch class.
+ * An axis that relates to data batches.
  */
 public class BatchAxis extends AxisBase {
     private final int size;
