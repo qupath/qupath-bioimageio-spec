@@ -20,7 +20,6 @@ import java.util.stream.Collectors;
 import static org.junit.jupiter.api.Assertions.*;
 import static qupath.bioimageio.spec.Model.findModelRdf;
 import static qupath.bioimageio.spec.Model.isYamlPath;
-import static qupath.bioimageio.spec.Model.parse;
 import static qupath.bioimageio.spec.tensor.Shape.createShapeArray;
 
 /**

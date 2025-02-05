@@ -20,13 +20,13 @@ import com.google.gson.JsonDeserializationContext;
 import com.google.gson.JsonDeserializer;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonParseException;
+import qupath.bioimageio.spec.tensor.sizes.ParameterizedSize;
 import qupath.bioimageio.spec.tensor.sizes.Size;
 
 import java.lang.reflect.Type;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.stream.IntStream;
 
 /**
@@ -268,12 +268,12 @@ public class Shape {
 
         SizesShape(List<Size> sizes) {
             this.sizes = sizes;
-            this.shape = this.sizes.stream().mapToInt(Size::getSize).toArray();
+            this.shape = this.sizes.stream().mapToInt(Size::size).toArray();
         }
 
         @Override
         public int[] getShape() {
-            return sizes.stream().mapToInt(Size::getSize).toArray();
+            return sizes.stream().mapToInt(Size::size).toArray();
         }
 
         @Override
@@ -281,6 +281,13 @@ public class Shape {
             assert target.length == sizes.size();
             return IntStream.range(0, target.length)
                     .map(i -> sizes.get(i).getTargetSize(target[i]))
+                    .toArray();
+        }
+
+        @Override
+        public int[] getShapeMin() {
+            return sizes.stream()
+                    .mapToInt(s -> s == null ? 0 : s.getMin())
                     .toArray();
         }
 
@@ -317,5 +324,3 @@ public class Shape {
     }
 
 }
-
-

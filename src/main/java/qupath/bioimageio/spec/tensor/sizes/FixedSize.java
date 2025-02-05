@@ -23,30 +23,28 @@ import java.util.List;
 /**
  * A fixed axis size. Basically an int with extra steps.
  */
-public class FixedSize implements Size {
-    private final int size;
-
+public record FixedSize(int size) implements Size {
     /**
      * Create a fixed size instance
+     *
      * @param size The fixed size in pixels.
      */
-    public FixedSize(int size) {
-        this.size = size;
-    }
-
-    @Override
-    public int getSize() {
-        return size;
+    public FixedSize {
     }
 
     @Override
     public int getTargetSize(int target) {
-        return getSize();
+        return size();
     }
 
     @Override
     public int getStep() {
         return NO_SIZE;
+    }
+
+    @Override
+    public int getMin() {
+        return size();
     }
 
     @Override
