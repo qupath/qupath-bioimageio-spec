@@ -25,7 +25,7 @@ import java.util.List;
 /**
  * A base Batch class.
  */
-class BatchAxis extends AxisBase {
+public class BatchAxis extends AxisBase {
     private final int size;
     private final boolean concatenable = true;
 
@@ -49,4 +49,3 @@ class BatchAxis extends AxisBase {
         // fixed size doesn't need validation
     }
 }
-
