@@ -25,12 +25,18 @@ import java.util.List;
  * Axes that relate to indexes rather than space/time/channel/batch, for example lists of objects.
  */
 public class IndexAxes {
-    abstract static class IndexAxisBase extends AxisBase implements ScaledAxis {
+    /**
+     * An axis relating to indexes, for example a list of objects.
+     */
+    public static class IndexAxis extends AxisBase implements ScaledAxis {
+        private final Size size;
         private final double scale = 1.0;
         private final String unit = null;
+        private final boolean concatenable = false;
 
-        IndexAxisBase(String id, String description) {
+        IndexAxis(String id, String description, Size size) {
             super(id, description);
+            this.size = size;
         }
 
         @Override
@@ -42,16 +48,7 @@ public class IndexAxes {
         public double getScale() {
             return 1;
         }
-    }
 
-    static class IndexAxis extends IndexAxisBase {
-        private final Size size;
-        private final boolean concatenable = false;
-
-        IndexAxis(String id, String description, Size size) {
-            super(id, description);
-            this.size = size;
-        }
         @Override
         public Size getSize() {
             return this.size;
@@ -61,6 +58,7 @@ public class IndexAxes {
         public void validate(List<? extends BaseTensor> tensors) {
             size.validate(tensors);
         }
+
     }
 
 }

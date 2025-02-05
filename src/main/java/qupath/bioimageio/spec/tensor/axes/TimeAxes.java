@@ -26,16 +26,23 @@ import java.util.List;
  */
 public class TimeAxes {
 
-    abstract static class TimeAxisBase extends AxisBase implements ScaledAxis {
+    /**
+     * An axis that relates to physical time.
+     */
+    public static class TimeAxis extends AxisBase implements ScaledAxis {
         private final String type = "time";
         private final TimeUnit unit;
         private final double scale;
 
-        TimeAxisBase(String id, String description, TimeUnit unit, double scale) {
+        private final Size size;
+
+        TimeAxis(String id, String description, TimeUnit unit, double scale, Size size) {
             super(id, description);
             this.unit = unit;
             this.scale = scale;
+            this.size = size;
         }
+
         @Override
         public AxisType getType() {
             return AxisType.T;
@@ -44,19 +51,6 @@ public class TimeAxes {
         @Override
         public double getScale() {
             return scale;
-        }
-
-        public TimeUnit getUnit() {
-            return unit;
-        }
-    }
-
-    static class TimeAxis extends TimeAxisBase {
-        private final Size size;
-
-        TimeAxis(String id, String description, TimeUnit unit, double scale, Size size) {
-            super(id, description, unit, scale);
-            this.size = size;
         }
 
         @Override
@@ -68,6 +62,15 @@ public class TimeAxes {
         public void validate(List<? extends BaseTensor> tensors) {
             getSize().validate(tensors);
         }
+
+        /**
+         * Gets the unit for this axis.
+         * @return the unit of time, hopefully SI but maybe something strange like "Day"
+         */
+        public TimeUnit getUnit() {
+            return unit;
+        }
+
     }
 
     static class TimeAxisWithHalo extends TimeAxis implements WithHalo {
