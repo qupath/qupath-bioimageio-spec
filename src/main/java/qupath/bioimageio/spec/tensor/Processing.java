@@ -354,24 +354,24 @@ public class Processing {
             var obj = json.getAsJsonObject();
             var name = obj.has("name") ? obj.get("name").getAsString() : obj.get("id").getAsString();
             JsonObject kwargs = deserializeField(context, obj, "kwargs", JsonObject.class, null);
-            switch (name) {
+            return switch (name) {
                 case "binarize" -> {
                     var binarize = new Binarize();
                     binarize.threshold = deserializeField(context, kwargs, "threshold", Double.class, true);
-                    return binarize;
+                    yield binarize;
                 }
                 case "clip" -> {
                     var clip = new Clip();
                     clip.min = deserializeField(context, kwargs, "min", Double.class, Double.NEGATIVE_INFINITY);
                     clip.max = deserializeField(context, kwargs, "max", Double.class, Double.POSITIVE_INFINITY);
-                    return clip;
+                    yield clip;
                 }
                 case "scale_linear" -> {
                     var scaleLinear = new ScaleLinear();
                     scaleLinear.axes = deserializeField(context, kwargs, "axes", Axis[].class, false);
                     scaleLinear.gain = deserializeField(context, kwargs, "gain", double[].class, false);
                     scaleLinear.offset = deserializeField(context, kwargs, "offset", double[].class, false);
-                    return scaleLinear;
+                    yield scaleLinear;
                 }
                 case "scale_mean_variance" -> {
                     var scaleMeanVariance = new ScaleMeanVariance();
@@ -379,7 +379,7 @@ public class Processing {
                     scaleMeanVariance.axes = deserializeField(context, kwargs, "axes", Axis[].class, false);
                     scaleMeanVariance.eps = deserializeField(context, kwargs, "eps", Double.class, 1e-6);
                     scaleMeanVariance.referenceTensor = deserializeField(context, kwargs, "reference_tensor", String.class, null);
-                    return scaleMeanVariance;
+                    yield scaleMeanVariance;
                 }
                 case "scale_range" -> {
                     var scaleRange = new ScaleRange();
@@ -389,10 +389,10 @@ public class Processing {
                     scaleRange.referenceTensor = deserializeField(context, obj, "reference_tensor", String.class, null);
                     scaleRange.maxPercentile = deserializeField(context, kwargs, "max_percentile", Double.class, 0.0);
                     scaleRange.minPercentile = deserializeField(context, kwargs, "min_percentile", Double.class, 100.0);
-                    return scaleRange;
+                    yield scaleRange;
                 }
                 case "sigmoid" -> {
-                    return new Sigmoid();
+                    yield new Sigmoid();
                 }
                 case "zero_mean_unit_variance" -> {
                     var zeroMeanUnitVariance = new ZeroMeanUnitVariance();
@@ -401,14 +401,14 @@ public class Processing {
                     zeroMeanUnitVariance.eps = deserializeField(context, kwargs, "eps", Double.class, 1e-6);
                     zeroMeanUnitVariance.mean = deserializeField(context, kwargs, "mean", double[].class, false);
                     zeroMeanUnitVariance.std = deserializeField(context, kwargs, "std", double[].class, false);
-                    return zeroMeanUnitVariance;
+                    yield zeroMeanUnitVariance;
                 }
                 default -> {
                     var processing = new Processing(name);
                     processing.kwargs = kwargs == null ? Collections.emptyMap() : context.deserialize(kwargs, Map.class);
-                    return processing;
+                    yield processing;
                 }
-            }
+            };
         }
 
     }
