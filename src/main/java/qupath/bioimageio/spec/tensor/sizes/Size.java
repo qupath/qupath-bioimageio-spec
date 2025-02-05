@@ -44,7 +44,7 @@ public interface Size {
      * Get the default size of this axis. {@link #getTargetSize(int)} may be more useful.
      * @return The size of this axis.
      */
-    int getSize();
+    int size();
 
     /**
      * Get a size as close as possible to a target.
@@ -58,6 +58,12 @@ public interface Size {
      * @return {@link #NO_SIZE} for any axis without a step size, otherwise the size.
      */
     int getStep();
+
+    /**
+     * Gets the minimum shape for this axis.
+     * @return the minimum size in pixels
+     */
+    int getMin();
 
     /**
      * Validate a tensor's size, ensuring that all internal fields are valid and resolving links between tensor objects.

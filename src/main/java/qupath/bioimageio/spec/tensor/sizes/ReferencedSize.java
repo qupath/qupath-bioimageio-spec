@@ -48,18 +48,23 @@ public class ReferencedSize implements Size {
     }
 
     @Override
-    public int getSize() {
-        return (int) (referenceAxis.getSize().getSize() * referenceAxis.getScale() / scale + offset);
+    public int size() {
+        return (int) (referenceAxis.getSize().size() * referenceAxis.getScale() / scale + offset);
     }
 
     @Override
     public int getTargetSize(int target) {
-        return getSize();
+        return size();
     }
 
     @Override
     public int getStep() {
         return NO_SIZE;
+    }
+
+    @Override
+    public int getMin() {
+        return size();
     }
 
     @Override

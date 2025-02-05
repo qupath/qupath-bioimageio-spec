@@ -34,18 +34,23 @@ class DataDependentSize implements Size {
     }
 
     @Override
-    public int getSize() {
+    public int size() {
         return NO_SIZE;
     }
 
     @Override
     public int getTargetSize(int target) {
-        return getSize();
+        return size();
     }
 
     @Override
     public int getStep() {
         return NO_SIZE;
+    }
+
+    @Override
+    public int getMin() {
+        return min;
     }
 
     @Override

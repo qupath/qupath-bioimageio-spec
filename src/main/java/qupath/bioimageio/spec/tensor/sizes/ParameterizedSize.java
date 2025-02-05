@@ -23,7 +23,7 @@ import java.util.List;
 /**
  * Describes a range of valid tensor axis sizes as `size = min + n*step`.
  */
-class ParameterizedSize implements Size {
+public class ParameterizedSize implements Size {
     private final int min;
     private final int step;
 
@@ -33,7 +33,7 @@ class ParameterizedSize implements Size {
     }
 
     @Override
-    public int getSize() {
+    public int size() {
         return getTargetSize(1);
     }
 
@@ -44,9 +44,16 @@ class ParameterizedSize implements Size {
         else
             return min + (int)Math.round((target - min)/(double)step) * step;
     }
+
     @Override
     public int getStep() {
         return step;
+    }
+
+
+    @Override
+    public int getMin() {
+        return min;
     }
 
     @Override
