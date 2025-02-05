@@ -214,8 +214,11 @@ public class Tensors {
                     range = List.of(Optional.empty(), Optional.empty());
                 } else {
                     range = r.getAsJsonArray().asList().stream()
-                            .map(JsonElement::getAsFloat)
-                            .map(Optional::of)
+                            .map(je -> {
+                                Optional<Float> o ;
+                                o = je.isJsonNull() ? Optional.empty() : Optional.of(je.getAsFloat());
+                                return o;
+                            })
                             .collect(Collectors.toList());
                 }
                 JsonElement unit = jsonObject.get("unit");
