@@ -16,15 +16,10 @@
 
 package qupath.bioimageio.spec.tensor.axes;
 
-import com.google.gson.JsonDeserializer;
-import qupath.bioimageio.spec.tensor.sizes.Size;
 import qupath.bioimageio.spec.tensor.BaseTensor;
+import qupath.bioimageio.spec.tensor.sizes.Size;
 
-import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
 
 /**
  * Base axis class for 0.4 and 0.5 axes.

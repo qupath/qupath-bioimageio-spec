@@ -31,4 +31,12 @@ abstract class AxisBase implements Axis {
     public String getID() {
         return this.id;
     }
+
+    /**
+     * Gets the description of the axis, if present
+     * @return the free text description (usually null)
+     */
+    public String getDescription() {
+        return description;
+    }
 }

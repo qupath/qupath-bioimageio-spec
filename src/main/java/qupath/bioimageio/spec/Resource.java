@@ -135,7 +135,7 @@ public class Resource {
     }
 
     /**
-     * A [SPDX license identifier](https://spdx.org/licenses/).
+     * A <a href="https://spdx.org/licenses/">SPDX license identifier</a>.
      * We do not support custom license beyond the SPDX license list.
      * @return the license
      */
