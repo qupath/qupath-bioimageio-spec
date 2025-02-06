@@ -85,7 +85,7 @@ public class TimeAxes {
     }
 
     /**
-     * Possible SI units for time.
+     * Possible units for time.
      */
     public enum TimeUnit {
         ATTOSECOND("attosecond"),

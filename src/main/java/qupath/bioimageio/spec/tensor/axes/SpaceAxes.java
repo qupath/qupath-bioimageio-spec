@@ -28,7 +28,7 @@ import java.util.List;
 public class SpaceAxes {
 
     /**
-     * Possible SI and imperial units for distance in physical space (some more likely to be used than others).
+     * Possible SI and imperial units for distance in physical space.
      */
     public enum SpaceUnit {
         ATTOMETER("attometer"),
