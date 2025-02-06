@@ -61,22 +61,22 @@ public class SpaceAxes {
 
         private final String unit;
 
-        SpaceUnit(String s) {
-            this.unit = s;
+        SpaceUnit(String unit) {
+            this.unit = unit;
         }
 
         /**
          * Get the SpaceUnit corresponding to a String value.
-         * @param unit The unit as a string
-         * @return The corresponding unit, or null if not found.
+         * @param unit the unit as a string
+         * @return the corresponding unit, or NO_UNIT if not found.
          */
         public static SpaceUnit getUnit(String unit) {
-            for (var su: SpaceUnit.values()) {
+            for (var su: values()) {
                 if (su.unit.equalsIgnoreCase(unit)) {
                     return su;
                 }
             }
-            return null;
+            return NO_UNIT;
         }
     }
 
@@ -85,7 +85,7 @@ public class SpaceAxes {
         private final double scale;
 
         SpaceAxisBase(String id, String description, String unit, double scale) {
-            this(id, description, SpaceUnit.valueOf(unit.toUpperCase()), scale);
+            this(id, description, SpaceUnit.getUnit(unit), scale);
         }
 
         SpaceAxisBase(String id, String description, SpaceUnit unit, double scale) {

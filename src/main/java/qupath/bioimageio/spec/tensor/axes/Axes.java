@@ -73,7 +73,7 @@ public class Axes {
                     axes[i] = switch (oj.get("type").getAsString()) {
                         case "time" -> new TimeAxes.TimeAxis(
                                 id, desc,
-                                TimeAxes.TimeUnit.valueOf(oj.get("unit").getAsString().toUpperCase()),
+                                TimeAxes.TimeUnit.getUnit(oj.get("unit").getAsString()),
                                 oj.get("scale").getAsDouble(),
                                 size
                         );
