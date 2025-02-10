@@ -426,13 +426,12 @@ public class Model extends Resource {
             }
         } else if (path.toAbsolutePath().toString().toLowerCase().endsWith(".zip")) {
             // Check zip file
-            try (var fs = FileSystems.newFileSystem(path, (ClassLoader) null)) {
-                for (var dir : fs.getRootDirectories()) {
-                    for (var name : MODEL_NAMES) {
-                        var p = dir.resolve(name);
-                        if (Files.exists(p))
-                            return p;
-                    }
+            var fs = FileSystems.newFileSystem(path, (ClassLoader) null);
+            for (var dir : fs.getRootDirectories()) {
+                for (var name : MODEL_NAMES) {
+                    var p = dir.resolve(name);
+                    if (Files.exists(p))
+                        return p;
                 }
             }
         }
