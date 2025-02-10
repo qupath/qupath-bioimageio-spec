@@ -1,0 +1,68 @@
+authors:
+- {affiliation: 'School of Informatics, University of Edinburgh', github_user: ThibautGoldsborough,
+  name: Thibaut Goldsborough}
+cite:
+- {doi: 10.48550/arXiv.2408.15954, text: 'If you use InstanSeg for nucleus segmentation
+    of brightfield histology images, please cite:'}
+- {doi: 10.1101/2024.09.04.611150, text: 'If you use InstanSeg for nucleus and/or
+    cell segmentation in fluorescence images, please cite:'}
+description: An InstanSeg model trained for instanseg segmentation
+documentation: README.md
+format_version: 0.5.3
+git_repo: https://github.com/instanseg/instanseg
+inputs:
+- axes:
+  - {type: batch}
+  - channel_names: [C1, C2, C3]
+    id: channel
+    type: channel
+  - id: y
+    scale: 0.5
+    size: {min: 32, step: 1}
+    type: space
+    unit: micrometer
+  - id: x
+    scale: 0.5
+    size: {min: 32, step: 1}
+    type: space
+    unit: micrometer
+  data: {type: float32}
+  id: raw
+  preprocessing:
+  - id: ensure_dtype
+    kwargs: {dtype: float32}
+  - id: scale_range
+    kwargs:
+      axes: [x, y]
+      eps: 1e-06
+      max_percentile: 99.9
+      min_percentile: 0.1
+  - id: ensure_dtype
+    kwargs: {dtype: float32}
+  test_tensor: {sha256: 7249485eca44eefcaf9c8fcd9ce7f8ab5257082c49ecd0e9f62a818e8d4096db,
+    source: test-input.npy}
+license: Apache-2.0
+name: InstanSeg model
+outputs:
+- axes:
+  - {type: batch}
+  - channel_names: [nuclei]
+    type: channel
+  - id: y
+    scale: 0.5
+    size: {axis_id: y, tensor_id: raw}
+    type: space
+    unit: micrometer
+  - id: x
+    scale: 0.5
+    size: {axis_id: x, tensor_id: raw}
+    type: space
+    unit: micrometer
+  id: instance_segmentation
+  test_tensor: {sha256: b927469b00fa4aabd0d5451b71699c146dab817260493222c57e2666902b9708,
+    source: test-output.npy}
+type: model
+version: '1'
+weights:
+  torchscript: {pytorch_version: 2.0.0, sha256: 4f9d4ddaa701e38b5d3bb6ec09dbd30ef283e2b0148a40be339bb53e3ec582eb,
+    source: instanseg.pt}

@@ -1,0 +1,112 @@
+attachments:
+  files:
+    - per_sample_scale_range.ijm
+authors:
+  - name: Thibaut Goldsborough
+cite:
+  - doi: https://doi.org/10.48550/arXiv.2408.15954
+    text: 'Goldsborough, T. et al. (2024) InstanSeg: an embedding-based instance segmentation
+    algorithm optimized for accurate, efficient and portable cell segmentation. _arXiv_.
+    Available at: https://doi.org/10.48550/arXiv.2408.15954'
+  - doi: https://doi.org/10.1101/2024.09.04.611150
+    text: 'Goldsborough, T. et al. (2024) A novel channel invariant architecture for
+    the segmentation of cells and nuclei in multiplexed images using InstanSeg. _bioRxiv_,
+    p. 2024.09.04.611150. Available at: https://doi.org/10.1101/2024.09.04.611150.'
+covers:
+  - cover.png
+description: InstanSeg model
+documentation: brightfield_nuclei_README.md
+format_version: 0.5.3
+git_repo: https://github.com/instanseg/instanseg
+inputs:
+  - axes:
+      - {type: batch}
+      - channel_names: [C1, C2, C3]
+        id: channel
+        type: channel
+      - id: y
+        scale: 0.5
+        size: {min: 32, step: 1}
+        type: space
+        unit: micrometer
+      - id: x
+        scale: 0.5
+        size: {min: 32, step: 1}
+        type: space
+        unit: micrometer
+    data: {type: float32}
+    id: raw
+    preprocessing:
+      - id: ensure_dtype
+        kwargs: {dtype: float32}
+      - id: scale_range
+        kwargs:
+          axes: [x, y]
+          eps: 1e-06
+          max_percentile: 99.9
+          min_percentile: 0.1
+      - id: ensure_dtype
+        kwargs: {dtype: float32}
+    test_tensor: {sha256: 7249485eca44eefcaf9c8fcd9ce7f8ab5257082c49ecd0e9f62a818e8d4096db,
+                  source: test-input.npy}
+license: Apache-2.0
+links:
+  - deepimagej/deepimagej
+name: MULTI_OUTPUT_v05
+outputs:
+  - axes:
+      - {type: batch}
+      - channel_names: [nuclei]
+        type: channel
+      - id: y
+        scale: 0.5
+        size: {axis_id: y, tensor_id: raw}
+        type: space
+        unit: micrometer
+      - id: x
+        scale: 0.5
+        size: {axis_id: x, tensor_id: raw}
+        type: space
+        unit: micrometer
+    id: instance_segmentation
+    test_tensor: {sha256: b927469b00fa4aabd0d5451b71699c146dab817260493222c57e2666902b9708,
+                  source: test-output.npy}
+  - axes:
+      - {type: batch}
+      - id: instances
+        type: index
+        size: {"min":1,"max":null}
+      - id: classes
+        type: index
+        size: 19
+    id: detection_classes
+    data:
+      values: ["fancy_class_0","fancy_class_1","fancy_class_2","fancy_class_3","fancy_class_4","fancy_class_5","fancy_class_6","fancy_class_7","fancy_class_8","fancy_class_9","fancy_class_10","fancy_class_11","fancy_class_12","fancy_class_13","fancy_class_14","fancy_class_15","fancy_class_16","fancy_class_17","fancy_class_18"]
+      type: "uint8"
+    test_tensor: {sha256: b927469b00fa4aabd0d5451b71699c146dab817260493222c57e2666902b9708,
+                  source: test-output.npy}
+sample_inputs:
+  - sample_input_0.tif
+sample_outputs:
+  - sample_output_0.tif
+tags:
+  - cell-segmentation
+  - nuclei
+  - cells
+  - unet
+  - fiji
+  - qupath
+  - pytorch
+  - instanseg
+  - whole-slide-imaging
+test_inputs:
+  - test-input.npy
+test_outputs:
+  - test-output.npy
+timestamp: '2024-09-10T10:32:00.576724'
+type: model
+weights:
+  torchscript:
+    pytorch_version: 2.0.0
+    sha256: be16794c6bb165e4dc18cd0498845a512edeede6922720ccbb2d719086ff07ba
+    source: instanseg.pt
