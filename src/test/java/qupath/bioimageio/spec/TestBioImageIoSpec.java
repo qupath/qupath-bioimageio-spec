@@ -45,7 +45,7 @@ class TestBioImageIoSpec {
 		else if (Files.isDirectory(path)) {
 			try (var fstream = Files.walk(path, testDepth)) {
 				return fstream
-						.filter(TestBioImageIoSpec::containsModel)
+						.filter(p -> containsModel(p) || p.toString().endsWith(".zip"))
 						.collect(Collectors.toSet());
 			}
 		} else {

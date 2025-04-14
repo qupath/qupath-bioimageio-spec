@@ -88,32 +88,55 @@ public class TimeAxes {
     }
 
     /**
-     * Possible SI units for time.
+     * Possible units for time.
      */
     public enum TimeUnit {
-        ATTOSECOND,
-        CENTISECOND,
-        DAY,
-        DECISECOND,
-        EXASECOND,
-        FEMTOSECOND,
-        GIGASECOND,
-        HECTOSECOND,
-        HOUR,
-        KILOSECOND,
-        MEGASECOND,
-        MICROSECOND,
-        MILLISECOND,
-        MINUTE,
-        NANOSECOND,
-        PETASECOND,
-        PICOSECOND,
-        SECOND,
-        TERASECOND,
-        YOCTOSECOND,
-        YOTTASECOND,
-        ZEPTOSECOND,
-        ZETTASECOND
+        ATTOSECOND("attosecond"),
+        CENTISECOND("centisecond"),
+        DAY("day"),
+        DECISECOND("decisecond"),
+        EXASECOND("exasecond"),
+        FEMTOSECOND("femtosecond"),
+        GIGASECOND("gigasecond"),
+        HECTOSECOND("hectosecond"),
+        HOUR("hour"),
+        KILOSECOND("kilosecond"),
+        MEGASECOND("megasecond"),
+        MICROSECOND("microsecond"),
+        MILLISECOND("millisecond"),
+        MINUTE("minute"),
+        NANOSECOND("nanosecond"),
+        PETASECOND("petasecond"),
+        PICOSECOND("picosecond"),
+        SECOND("second"),
+        TERASECOND("terasecond"),
+        YOCTOSECOND("yoctosecond"),
+        YOTTASECOND("yottasecond"),
+        ZEPTOSECOND("zeptosecond"),
+        ZETTASECOND("zettasecond"),
+        NO_UNIT("");
+
+        private final String unit;
+
+        TimeUnit(String unit) {
+            this.unit = unit;
+        }
+
+        /**
+         * Get the TimeUnit corresponding to a String value.
+         * @param unit the unit as a string
+         * @return the corresponding unit, or NO_UNIT if not found.
+         */
+        public static TimeUnit getUnit(String unit) {
+            for (var tu: values()) {
+                if (tu.unit.equalsIgnoreCase(unit)) {
+                    return tu;
+                }
+            }
+            return NO_UNIT;
+        }
     }
+
+
 
 }
