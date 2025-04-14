@@ -16,11 +16,11 @@
 
 package qupath.bioimageio.spec.tensor.axes;
 
+import java.util.List;
+
+import qupath.bioimageio.spec.tensor.BaseTensor;
 import qupath.bioimageio.spec.tensor.sizes.ReferencedSize;
 import qupath.bioimageio.spec.tensor.sizes.Size;
-import qupath.bioimageio.spec.tensor.BaseTensor;
-
-import java.util.List;
 
 /**
  * Axes relating to physical space.
@@ -80,18 +80,24 @@ public class SpaceAxes {
         }
     }
 
-    abstract static class SpaceAxisBase extends AxisBase implements ScaledAxis {
+    /**
+     * An axis that relates to physical space (X, Y, Z)
+     */
+    public static class SpaceAxis extends AxisBase implements ScaledAxis {
         private final SpaceUnit unit;
         private final double scale;
+        private final Size size;
+        private final boolean concatenable = false;
 
-        SpaceAxisBase(String id, String description, String unit, double scale) {
-            this(id, description, SpaceUnit.getUnit(unit), scale);
+        SpaceAxis(String id, String description, String unit, double scale, Size size) {
+            this(id, description, SpaceUnit.getUnit(unit), scale, size);
         }
 
-        SpaceAxisBase(String id, String description, SpaceUnit unit, double scale) {
+        SpaceAxis(String id, String description, SpaceUnit unit, double scale, Size size) {
             super(id, description);
             this.unit = unit;
             this.scale = scale;
+            this.size = size;
         }
 
         @Override
@@ -104,32 +110,24 @@ public class SpaceAxes {
             return this.scale;
         }
 
+        /**
+         * Gets the unit for the space dimension
+         * @return the unit (hopefully SI, but maybe imperial)
+         */
         public SpaceUnit getUnit() {
             return unit;
-        }
-    }
-
-    static class SpaceAxis extends SpaceAxisBase {
-        private final Size size;
-        private final boolean concatenable = false;
-
-        SpaceAxis(String id, String description, String unit, double scale, Size size) {
-            super(id, description, unit.isEmpty() ? "NO_UNIT" : unit, scale);
-            this.size = size;
-        }
-
-        @Override
-        public Size getSize() {
-            return this.size;
         }
 
         @Override
         public void validate(List<? extends BaseTensor> tensors) {
             getSize().validate(tensors);
         }
+
+        @Override
+        public Size getSize() {
+            return this.size;
+        }
     }
-
-
 
     static class SpaceAxisWithHalo extends SpaceAxis implements WithHalo {
         private ReferencedSize size;
