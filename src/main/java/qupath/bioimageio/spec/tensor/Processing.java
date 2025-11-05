@@ -221,7 +221,7 @@ public class Processing {
          * @return the subset of axes to scale jointly.
          */
         public Axis[] getAxes() {
-            return axes.clone();
+            return axes == null ? null : axes.clone();
         }
 
     }
