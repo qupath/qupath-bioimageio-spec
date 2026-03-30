@@ -16,7 +16,8 @@
 
 package qupath.bioimageio.spec.tensor.axes;
 
-import java.util.ArrayList;import qupath.bioimageio.spec.tensor.sizes.FixedSize;
+import java.util.ArrayList;
+import qupath.bioimageio.spec.tensor.sizes.FixedSize;
 import qupath.bioimageio.spec.tensor.sizes.Size;
 import qupath.bioimageio.spec.tensor.BaseTensor;
 
