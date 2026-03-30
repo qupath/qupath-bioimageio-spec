@@ -49,7 +49,7 @@ public class ChannelAxis extends AxisBase implements ScaledAxis {
      * @return a copy of the underlying list of channel names
      */
     public List<String> getChannelNames() {
-        return new ArrayList<>(channel_names);
+        return List.copyOf(channel_names);
     }
 
     @Override
