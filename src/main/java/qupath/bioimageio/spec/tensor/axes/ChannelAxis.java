@@ -16,7 +16,7 @@
 
 package qupath.bioimageio.spec.tensor.axes;
 
-import qupath.bioimageio.spec.tensor.sizes.FixedSize;
+import java.util.ArrayList;import qupath.bioimageio.spec.tensor.sizes.FixedSize;
 import qupath.bioimageio.spec.tensor.sizes.Size;
 import qupath.bioimageio.spec.tensor.BaseTensor;
 
@@ -41,6 +41,14 @@ public class ChannelAxis extends AxisBase implements ScaledAxis {
     @Override
     public void validate(List<? extends BaseTensor> tensors) {
         // fixed size based on list of channels
+    }
+
+    /**
+     * Get the list of channel names
+     * @return a copy of the underlying list of channel names
+     */
+    public List<String> getChannelNames() {
+        return new ArrayList<>(channel_names);
     }
 
     @Override
