@@ -1,5 +1,6 @@
 package qupath.bioimageio.spec;
 
+import com.google.gson.JsonIOException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -11,6 +12,7 @@ import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Map;
@@ -88,7 +90,13 @@ class TestBioImageIoSpec {
 			fail(e);
 		}
 	}
-	
+
+	@Test
+	void test_Halo() throws URISyntaxException, IOException {
+		var path = Paths.get(Objects.requireNonNull(TestBioImageIoSpec.class.getResource("/specs/nucleisegboundarymodel")).toURI());
+		int[] halo = Model.parse(path).getOutputs().get(0).getHalo();
+		assertArrayEquals(new int[]{0, 0, 16, 16}, halo);
+	}
 	
 	/**
 	 * Test creating shapes for different axes strings.
