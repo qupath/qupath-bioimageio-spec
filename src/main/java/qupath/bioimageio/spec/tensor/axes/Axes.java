@@ -89,12 +89,25 @@ public class Axes {
                             );
                         }
                         case "index" -> new IndexAxes.IndexAxis(id, desc, size);
-                        case "space" -> new SpaceAxes.SpaceAxis(
-                                id, desc,
-                                deserializeField(context, oj, "unit", String.class, ""),
-                                deserializeField(context, oj, "scale", Double.class, 1.0),
-                                size
-                        );
+                        case "space" -> {
+                            if (oj.has("halo")) {
+                                yield new SpaceAxes.SpaceAxisWithHalo(
+                                        id, desc,
+                                        deserializeField(context, oj, "unit", String.class, ""),
+                                        deserializeField(context, oj, "scale", Double.class, 1.0),
+                                        size,
+                                        deserializeField(context, oj, "halo", Integer.class, 0)
+                                );
+                            } else {
+                                yield new SpaceAxes.SpaceAxis(
+                                        id, desc,
+                                        deserializeField(context, oj, "unit", String.class, ""),
+                                        deserializeField(context, oj, "scale", Double.class, 1.0),
+                                        size
+                                );
+                            }
+
+                        }
                         case "batch" -> new BatchAxis(id, desc, deserializeField(context, oj, "size", Integer.class, 1));
                         default -> {
                             logger.error("Unknown object {}", oj);

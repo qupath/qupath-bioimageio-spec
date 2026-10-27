@@ -1,0 +1,192 @@
+name: NucleiSegmentationBoundaryModel
+description: Nucleus segmentation for fluorescence microscopy
+covers:
+  - cover.png
+id_emoji: 🦈
+authors:
+  - affiliation: EMBL Heidelberg
+    name: Constantin Pape
+    github_user: constantinpape
+attachments:
+  - source: zero_mean_unit_variance.ijm
+    sha256: 767f2c3a50e36365c30b9e46e57fcf82e606d337e8a48d4a2440dc512813d186
+cite:
+  - text: training library
+    doi: 10.5281/zenodo.5108853
+  - text: architecture
+    doi: 10.1007/978-3-319-24574-4_28
+  - text: segmentation algorithm
+    doi: 10.1038/nmeth.4151
+  - text: data
+    url: https://www.nature.com/articles/s41592-019-0612-7
+license: CC-BY-4.0
+links:
+  - ilastik/stardist_dsb_training_data
+  - ilastik/ilastik
+  - deepimagej/deepimagej
+  - imjoy/BioImageIO-Packager
+uploader:
+  email: thefynnbe@gmail.com
+  name: Fynn Beuttenmüller
+maintainers:
+  - name: Constantin Pape
+    github_user: constantinpape
+tags:
+  - fluorescence-light-microscopy
+  - nuclei
+  - instance-segmentation
+  - unet
+  - 2d
+version: 1.2
+format_version: 0.5.7
+type: model
+id: romantic-shark
+documentation: documentation.md
+inputs:
+  - id: input0
+    description: ''
+    axes:
+      - type: batch
+      - id: channel
+        description: ''
+        type: channel
+        channel_names:
+          - channel0
+      - size:
+          min: 64
+          step: 16
+        id: 'y'
+        description: ''
+        type: space
+        scale: 1
+        concatenable: false
+      - size:
+          min: 64
+          step: 16
+        id: x
+        description: ''
+        type: space
+        scale: 1
+        concatenable: false
+    test_tensor:
+      source: test_input_0.npy
+      sha256: c29bd6e16e3f7856217b407ba948222b1c2a0da41922a0f79297e25588614fe2
+    sample_tensor:
+      source: sample_input_0.tif
+      sha256: a24b3c708b6ca6825494eb7c5a4d221335fb3eef5eb9d03f4108907cdaad2bf9
+    data:
+      type: float32
+      range:
+        - null
+        - null
+      unit: arbitrary unit
+      scale: 1
+      offset: null
+    optional: false
+    preprocessing:
+      - id: ensure_dtype
+        kwargs:
+          dtype: float32
+      - id: zero_mean_unit_variance
+        kwargs:
+          axes:
+            - channel
+            - 'y'
+            - x
+          eps: 0.000001
+      - id: ensure_dtype
+        kwargs:
+          dtype: float32
+outputs:
+  - id: output0
+    description: ''
+    axes:
+      - type: batch
+      - id: channel
+        description: ''
+        type: channel
+        channel_names:
+          - channel0
+          - channel1
+      - halo: 16
+        size:
+          tensor_id: input0
+          axis_id: 'y'
+          offset: 0
+        id: 'y'
+        type: space
+        scale: 1
+      - halo: 16
+        size:
+          tensor_id: input0
+          axis_id: x
+          offset: 0
+        id: x
+        type: space
+        scale: 1
+    test_tensor:
+      source: test_output_0.npy
+      sha256: 510181f38930e59e4fd8ecc03d6ea7c980eb6609759655f2d4a41fe36108d5f5
+    sample_tensor:
+      source: sample_output_0.tif
+      sha256: e8f99aabe8405427f515eba23a49f58ba50302f57d1fdfd07026e1984f836c5e
+    data:
+      type: float32
+      range:
+        - null
+        - null
+      unit: arbitrary unit
+      scale: 1
+      offset: null
+timestamp: '2022-06-15T20:06:22+00:00'
+training_data:
+  id: ilastik/stradist_dsb_training_data
+weights:
+  pytorch_state_dict:
+    source: weights.pt
+    sha256: 608f52cd7f5119f7a7b8272395b0c169714e8be34536eaf159820f72a1d6a5b7
+    architecture:
+      source: unet.py
+      sha256: 7f5b15948e8e2c91f78dcff34fbf30af517073e91ba487f3edb982b948d099b3
+      callable: UNet2d
+      kwargs:
+        depth: 4
+        final_activation: Sigmoid
+        gain: 2
+        in_channels: 1
+        initial_features: 64
+        out_channels: 2
+        postprocessing: null
+        return_side_outputs: false
+    pytorch_version: '1.13'
+  torchscript:
+    source: weights-torchscript.pt
+    sha256: 8410950508655a300793b389c815dc30b1334062fc1dadb1e15e55a93cbb99a0
+    parent: pytorch_state_dict
+    pytorch_version: '1.13'
+config:
+  _conceptdoi: 10.5281/zenodo.5764892
+  deepimagej:
+    allow_tiling: true
+    model_keys: null
+    prediction:
+      postprocess:
+        - spec: null
+      preprocess:
+        - kwargs: zero_mean_unit_variance.ijm
+          spec: ij.IJ::runMacroFile
+    pyramidal_model: false
+    test_information:
+      inputs:
+        - name: sample_input_0.tif
+          pixel_size:
+            x: 1
+            'y': 1
+            z: 1
+          size: 256 x 256 x 1 x 1
+      memory_peak: null
+      outputs:
+        - name: sample_output_0.tif
+          size: 256 x 256 x 1 x 2
+          type: image
+      runtime: null
