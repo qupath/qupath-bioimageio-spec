@@ -96,7 +96,7 @@ public interface Size {
                         obj.get("axis_id").getAsString(),
                         obj.get("tensor_id").getAsString(),
                         scale != null ? scale.getAsDouble() : 1.0,
-                        deserializeField(context, obj, "offset", Integer.class, 1)
+                        deserializeField(context, obj, "offset", Integer.class, 0)
                 );
             }
             return new DataDependentSize(
